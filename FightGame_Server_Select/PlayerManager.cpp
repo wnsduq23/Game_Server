@@ -39,13 +39,9 @@ void PlayerManager::DestroyDeadPlayers()
 			int DeleteCharSize = Create_PACKET_SC_DELETE_CHARACTER(&_packetBuffer, deletedPlayer->GetID());
 			HeaderANDMsgBroadcast(DeleteCharSize);
 
-			if (_packetBuffer.GetReadPtr() != _packetBuffer.GetWritePtr())
-				printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
-
 			deletedPlayer->GetSession()->SetSessionDead();
 			i = _playerList.erase(i);
 			delete(deletedPlayer);
-			printf("죽은 플레이어가 생겼습니다!\n");
 		}
 		else
 			i++;
@@ -60,48 +56,41 @@ void PlayerManager::PlayerActionProc()
 	{
 		// recvbuf에서 header 뺀 후에 type별로 분기 + 행동
 		(*i)->DeqFromRecvbufANDHandlePacket();
-		// 정보에 맞게 행동으로 옮김
-		(*i)->Move();
+		// 이동의 경우 movestop 패킷이 올 때까지 계속 이동
+		(*i)->MoveUpdate();
+
+		_packetBuffer.Clear();
 
 		// 옮긴 행동을 다른 클라들에게 알림 -> SC PACKETS을 broadcasting함
 		if ((*i)->GetPacketMoveStart())
 		{
-			_packetBuffer.Clear();
+		//	_packetBuffer.Clear();
 
 			int movestart_size = Create_PACKET_SC_MOVE_START(&_packetBuffer,
 				(*i)->GetID(), (*i)->GetMoveDirection(), (*i)->GetX(), (*i)->GetY());
 			HeaderANDMsgBroadcast(movestart_size, (*i));
 			(*i)->ResetPacketMoveStart();
-
-			if (_packetBuffer.GetReadPtr() != _packetBuffer.GetWritePtr())
-				printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
 		}
 
 		if ((*i)->GetPacketMoveStop())
 		{
-			_packetBuffer.Clear();
+		//	_packetBuffer.Clear();
 
 			int movestop_size = Create_PACKET_SC_MOVE_STOP(&_packetBuffer,
 				(*i)->GetID(), (*i)->GetHeadDirection(), (*i)->GetX(), (*i)->GetY());
 			HeaderANDMsgBroadcast(movestop_size, (*i));
 			(*i)->ResetPacketMoveStop();
 
-			if (_packetBuffer.GetReadPtr() != _packetBuffer.GetWritePtr())
-				printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
-
 		}
 
 		if ((*i)->GetPacketAttack1())
 		{
-			_packetBuffer.Clear();
+		//	_packetBuffer.Clear();
 
 			int attack1_size = Create_PACKET_SC_ATTACK1(&_packetBuffer,
 				(*i)->GetID(), (*i)->GetHeadDirection(), (*i)->GetX(), (*i)->GetY());
 			HeaderANDMsgBroadcast(attack1_size, (*i));
 			(*i)->ResetPacketAttack1();
-
-			if (_packetBuffer.GetReadPtr() != _packetBuffer.GetWritePtr())
-				printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
 
 			ChkHitBroadcast(dfATTACK_TYPE_ATTACK1,
 				(*i)->GetID(), (*i)->GetHeadDirection(), (*i)->GetX(), (*i)->GetY());
@@ -109,31 +98,25 @@ void PlayerManager::PlayerActionProc()
 
 		if ((*i)->GetPacketAttack2())
 		{
-			_packetBuffer.Clear();
+		//	_packetBuffer.Clear();
 
 			int attack2_size = Create_PACKET_SC_ATTACK2(&_packetBuffer,
 				(*i)->GetID(), (*i)->GetHeadDirection(), (*i)->GetX(), (*i)->GetY());
 			HeaderANDMsgBroadcast(attack2_size, (*i));
 			(*i)->ResetPacketAttack2();
-
-			if (_packetBuffer.GetReadPtr() != _packetBuffer.GetWritePtr())
-				printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
-
+			
 			ChkHitBroadcast(dfATTACK_TYPE_ATTACK2,
 				(*i)->GetID(), (*i)->GetHeadDirection(), (*i)->GetX(), (*i)->GetY());
 		}
 
 		if ((*i)->GetPacketAttack3())
 		{
-			_packetBuffer.Clear();
+		//	_packetBuffer.Clear();
 
 			int attack3_size = Create_PACKET_SC_ATTACK3(&_packetBuffer,
 				(*i)->GetID(), (*i)->GetHeadDirection(), (*i)->GetX(), (*i)->GetY());
 			HeaderANDMsgBroadcast(attack3_size, (*i));
 			(*i)->ResetPacketAttack3();
-
-			if (_packetBuffer.GetReadPtr() != _packetBuffer.GetWritePtr())
-				printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
 
 			ChkHitBroadcast(dfATTACK_TYPE_ATTACK3,
 				(*i)->GetID(), (*i)->GetHeadDirection(), (*i)->GetX(), (*i)->GetY());
@@ -256,9 +239,6 @@ void PlayerManager::ChkHitBroadcast(UINT8 attackType, UINT32 ID, UINT8 direction
 			player->TakeDamage(damage);
 			int damage_size = Create_PACKET_SC_DAMAGE(&_packetBuffer, ID, (*i)->GetID(), (*i)->GetHp());
 			HeaderANDMsgBroadcast(damage_size);
-
-			if (_packetBuffer.GetReadPtr() != _packetBuffer.GetWritePtr())
-				printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
 		}
 	}
 }

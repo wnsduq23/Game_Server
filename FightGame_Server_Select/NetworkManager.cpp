@@ -3,6 +3,7 @@
 #include "main.h"
 #include <stdio.h>
 
+//# define NETWORK_DEBUG
 
 NetworkManager::NetworkManager()
 {

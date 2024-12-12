@@ -2,7 +2,7 @@
 #include "CreateSCPacket.h"
 #include "PacketDefine.h"
 
-#define RECV_PACKET_DEBUG
+//#define RECV_PACKET_DEBUG
 
 Player::Player(Session* pSession, UINT32 ID)
 	: _pSession(pSession), _ID(ID),
@@ -18,7 +18,7 @@ Player::~Player()
 	SetStateDead();
 }
 
-void Player::Move()
+void Player::MoveUpdate()
 {
 	if (_x < dfRANGE_MOVE_LEFT || _x > dfRANGE_MOVE_RIGHT ||
 		_y > dfRANGE_MOVE_BOTTOM || _y < dfRANGE_MOVE_TOP)
@@ -113,34 +113,41 @@ void Player::DeqFromRecvbufANDHandlePacket()
 			return;
 		}
 
-		_packetBuffer.Clear();
+		try {
+			_packetBuffer.Clear();
 
-		switch (header.action_type)
-		{
-		case dfPACKET_CS_MOVE_START:
-			HandlePacketMoveStart();
-			break;
+			switch (header.action_type)
+			{
+			case dfPACKET_CS_MOVE_START:
+				HandlePacketMoveStart();
+				break;
 
-		case dfPACKET_CS_MOVE_STOP:
-			HandlePacketMoveStop();
-			break;
+			case dfPACKET_CS_MOVE_STOP:
+				HandlePacketMoveStop();
+				break;
 
-		case dfPACKET_CS_ATTACK1:
-			HandlePacketAttack1();
-			break;
+			case dfPACKET_CS_ATTACK1:
+				HandlePacketAttack1();
+				break;
 
-		case dfPACKET_CS_ATTACK2:
-			HandlePacketAttack2();
-			break;
+			case dfPACKET_CS_ATTACK2:
+				HandlePacketAttack2();
+				break;
 
-		case dfPACKET_CS_ATTACK3:
-			HandlePacketAttack3();
-			break;
+			case dfPACKET_CS_ATTACK3:
+				HandlePacketAttack3();
+				break;
+
+			default:
+				printf("Unknown packet type. Func %s, Line %d\n", __func__, __LINE__);
+				return;
+			}
+
 		}
-
-		if (_packetBuffer.GetReadPtr() != _packetBuffer.GetWritePtr())
+		catch (...) {
 			printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
-		
+			return;
+		}
 		iUsedSize = _pSession->_recvBuf.GetUseSize();
 	}
 }

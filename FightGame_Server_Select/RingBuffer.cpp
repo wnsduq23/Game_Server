@@ -1,7 +1,8 @@
 #include "RingBuffer.h"
 #include <iostream>
-#define RINGBUFFER_DEBUG
-#define ENQ_DEQ_DEBUG
+
+//#define RINGBUFFER_DEBUG
+//#define ENQ_DEQ_DEBUG
 
 RingBuffer::RingBuffer(void) : _iBufferSize(DEFAULT_BUF_SIZE), _iFreeSize(DEFAULT_BUF_SIZE - 1)
 {
@@ -328,7 +329,7 @@ void RingBuffer::ClearBuffer(void)
     _iReadPos = 0;
     _iWritePos = 0;
     _iUsedSize = 0;
-    _iFreeSize = _iBufferSize;
+    _iFreeSize = _iBufferSize - 1;
 }
 
 

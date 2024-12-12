@@ -1,4 +1,5 @@
 #include "CreateSCPacket.h"
+#include <stdio.h>
 
 void Create_PACKET_HEADER(
 	stPACKET_HEADER& header,
@@ -25,6 +26,9 @@ int Create_PACKET_SC_CREATE_MY_CHARACTER(
 	*buffer << Y;
 	*buffer << HP;
 
+	if (buffer->GetReadPtr() != buffer->GetWritePtr())
+		printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
+
 	return (size + dfPACKET_HEADER_SIZE);
 }
 
@@ -44,6 +48,9 @@ int Create_PACKET_SC_CREATE_OTHER_CHARACTER(
 	*buffer << Y;
 	*buffer << HP;
 
+	if (buffer->GetReadPtr() != buffer->GetWritePtr())
+		printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
+
 	return (size + dfPACKET_HEADER_SIZE);
 }
 
@@ -58,6 +65,9 @@ int Create_PACKET_SC_DELETE_CHARACTER(
 	buffer->PutData((char*)&header, dfPACKET_HEADER_SIZE);
 
 	*buffer << ID;
+
+	if (buffer->GetReadPtr() != buffer->GetWritePtr())
+		printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
 
 	return (size + dfPACKET_HEADER_SIZE);
 }
@@ -75,6 +85,9 @@ int Create_PACKET_SC_MOVE_START(SerializeBuffer* buffer,
 	*buffer << Direction;
 	*buffer << X;
 	*buffer << Y;
+
+	if (buffer->GetReadPtr() != buffer->GetWritePtr())
+		printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
 
 	return (size + dfPACKET_HEADER_SIZE);
 }
@@ -94,6 +107,9 @@ int Create_PACKET_SC_MOVE_STOP(SerializeBuffer* buffer,
 	*buffer << X;
 	*buffer << Y;
 
+	if (buffer->GetReadPtr() != buffer->GetWritePtr())
+		printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
+
 	return (size + dfPACKET_HEADER_SIZE);
 }
 
@@ -111,6 +127,9 @@ int Create_PACKET_SC_ATTACK1(SerializeBuffer* buffer,
 	*buffer << X;
 	*buffer << Y;
 
+	if (buffer->GetReadPtr() != buffer->GetWritePtr())
+		printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
+
 	return (size + dfPACKET_HEADER_SIZE);
 }
 
@@ -127,6 +146,9 @@ int Create_PACKET_SC_ATTACK2(SerializeBuffer* buffer,
 	*buffer << Direction;
 	*buffer << X;
 	*buffer << Y;
+
+	if (buffer->GetReadPtr() != buffer->GetWritePtr())
+		printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
 
 	return (size + dfPACKET_HEADER_SIZE);
 }
@@ -146,6 +168,9 @@ int Create_PACKET_SC_ATTACK3(SerializeBuffer* buffer,
 	*buffer << X;
 	*buffer << Y;
 
+	if (buffer->GetReadPtr() != buffer->GetWritePtr())
+		printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
+
 	return (size + dfPACKET_HEADER_SIZE);
 }
 
@@ -164,6 +189,9 @@ int Create_PACKET_SC_DAMAGE(SerializeBuffer* buffer,
 	*buffer << DamageID;
 	*buffer << DamageHP;
 
+	if (buffer->GetReadPtr() != buffer->GetWritePtr())
+		printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
+
 	return (size + dfPACKET_HEADER_SIZE);
 }
 
@@ -179,6 +207,9 @@ int Create_PACKET_SC_SYNC(SerializeBuffer* buffer,
 
 	*buffer << X;
 	*buffer << Y;
+
+	if (buffer->GetReadPtr() != buffer->GetWritePtr())
+		printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
 
 	return (size + dfPACKET_HEADER_SIZE);
 }

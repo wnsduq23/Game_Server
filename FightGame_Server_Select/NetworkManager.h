@@ -9,7 +9,6 @@
 /*========================
 *		DEFINE
 ========================*/
-# define NETWORK_DEBUG
 #define IP L"0.0.0.0"
 #define PORT 5000
 

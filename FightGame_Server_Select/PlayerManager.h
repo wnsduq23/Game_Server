@@ -108,7 +108,7 @@ public:
 	*	CLASS FUNCTION
 	========================*/
 public:
-	void Move();
+	void MoveUpdate();
 	void TakeDamage(UINT8 damage);
 	void DeqFromRecvbufANDHandlePacket();
 private:
