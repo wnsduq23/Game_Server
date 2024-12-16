@@ -133,13 +133,11 @@ void PlayerManager::CreatePlayer(Session* newSession)
 	int CreateMyCharSize = Create_PACKET_SC_CREATE_MY_CHARACTER(&_packetBuffer,
 		player->GetID(), player->GetHeadDirection(), player->GetX(), player->GetY(), player->GetHp());
 
-	printf("Function %s Line %d :", __func__, __LINE__);
 	HeaderANDMsgUnicast(CreateMyCharSize, player);
 
 	// Send <Create New Player Message> to All Player
 	int CreateOtherCharSize = Create_PACKET_SC_CREATE_OTHER_CHARACTER(&_packetBuffer,
 		player->GetID(), player->GetHeadDirection(), player->GetX(), player->GetY(), player->GetHp());
-	printf("Function %s Line %d :", __func__, __LINE__);
 	HeaderANDMsgBroadcast(CreateOtherCharSize, player);
 
 	// Send <Create All Players Message> to New Player

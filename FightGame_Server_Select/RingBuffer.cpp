@@ -126,16 +126,16 @@ int RingBuffer::Enqueue(char* chpData, int iSize)
 #ifdef RINGBUFFER_DEBUG
     if (GetFreeSize() < 0 || DirectEnqueueSize() < 0)
     {
-        printf("Error! Func %s Function %s Line %d\n", __func__, __func__, __LINE__);
+        printf("Error! Function %s Line %d\n", __func__, __LINE__);
         return -1;
     }
 #endif
 
-    if (iSize > GetFreeSize())
+    if (iSize > GetFreeSize() || iSize < 0)
     {
         if (!Resize(_iBufferSize + iSize))
         {
-            printf("Error! Func %s Function %s Line %d\n", __func__, __func__, __LINE__);
+            printf("Error! Function %s Line %d\n", __func__, __LINE__);
             return -1;
         }
     }
@@ -221,14 +221,14 @@ int RingBuffer::Dequeue(char* chpData, int iSize)
 #ifdef RINGBUFFER_DEBUG
     if (GetUseSize() < 0 || DirectDequeueSize() < 0)
     {
-        printf("Error! Func %s Function %s Line %d\n", __func__, __func__, __LINE__);
+        printf("Error! Function %s Line %d\n", __func__, __LINE__);
         return -1;
     }
 #endif
 
-    if (iSize > GetUseSize())
+    if (iSize > GetUseSize() || iSize < 0)
     {
-        printf("Error! Func %s Function %s Line %d\n", __func__, __func__, __LINE__);
+        printf("Error! Function %s Line %d\n", __func__, __LINE__);
         return -1;
     }
 
@@ -297,14 +297,14 @@ int RingBuffer::Peek(char* chpDest, int iSize)
 #ifdef RINGBUFFER_DEBUG
     if (GetUseSize() < 0 || DirectDequeueSize() < 0)
     {
-        printf("Error! Func %s Line %d\n", __func__, __LINE__);
+        printf("Error! Function %s Line %d\n", __func__, __LINE__);
         return -1;
     }
 #endif
 
-    if (iSize > GetUseSize())
+    if (iSize > GetUseSize() || iSize < 0)
     {
-        printf("Error! Func %s Line %d\n", __func__, __LINE__);
+        printf("Error! Function %s Line %d\n", __func__, __LINE__);
         return -1;
     }
 
