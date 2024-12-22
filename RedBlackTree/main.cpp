@@ -4,7 +4,6 @@
 
 TreeTester* g_pTreeTester;
 
-HPEN	g_hPen;
 HBITMAP g_hMemDCBitmap;
 HBITMAP g_hMemDCBitmap_old;
 HDC		g_hMemDC;
@@ -192,6 +191,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		SelectObject(g_hMemDC, g_hMemDCBitmap_old);
 		DeleteObject(g_hMemDC);
 		DeleteObject(g_hMemDCBitmap);
+		delete(g_pTreeTester);
 		PostQuitMessage(0);
 		break;
 

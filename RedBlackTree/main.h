@@ -9,7 +9,6 @@
 *	Global Variable
 *=======================*/
 
-extern HPEN		g_hPen;
 extern HBITMAP	g_hMemDCBitmap;
 extern HBITMAP	g_hMemDCBitmap_old;
 extern HDC		g_hMemDC;

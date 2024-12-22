@@ -1,6 +1,5 @@
 #include "TreeTester.h"
 #include "main.h"
-#include <list>
 
 //#define BINARY_TEST
 #define REDBLACK_TEST
@@ -10,12 +9,15 @@ TreeTester::TreeTester()
     printf("Start TreeTester!!!\n");
     PrintMenu();
 
-	srand(20);
 	_hBlackPen = CreatePen(PS_SOLID, 1, RGB(100, 100, 100));
 	_hRedPen = CreatePen(PS_SOLID, 1, RGB(200, 0, 0));
 
 	_hBlackBrush = CreateSolidBrush(RGB(100, 100, 100));
 	_hRedBrush = CreateSolidBrush(RGB(200, 0, 0));
+}
+
+TreeTester::~TreeTester()
+{
 }
 
 void TreeTester::DrawTree()
@@ -106,37 +108,39 @@ void TreeTester::InsertRandomNode()
     // LOGIC
     list<int> duplist;
     int ret;
+
+    random_device rd;
+	mt19937 rng(rd());
+	uniform_int_distribution<int> dist(0, INT_MAX); // 범위 지정
+
     for (int i = 0; i < node; i++)
     {
-        int rand1 = rand();
-        int rand2 = rand();
-        rand1 = rand1 << 7;
-        rand1 |= rand2;
-        printf("Insert ==========> %d\n", rand1);
+		int rand = dist(rng); // 첫 번째 난수
+        printf("Insert ==========> %d\n", rand);
 
 #ifdef REDBLACK_TEST
-		ret = _RedBlackTree.InsertNode(rand1);
+		ret = _RedBlackTree.InsertNode(rand);
 #endif
 
 #ifdef BINART_TEST
-		_BinaryTree.InsertNode(rand1);
+		_BinaryTree.InsertNode(rand);
 #endif
         if (ret == INSERT_ERROR_UNKNOWN)
         {
-            printf("Insert Unknown Error! Cur Data: %d\n", rand1);
+            printf("Insert Unknown Error! Cur Data: %d\n", rand);
             break;
         }
         else if (ret == INSERT_ERROR_TREE_IS_FULL)
         {
 			printf("Tree is full!\n"
 				"Cur Data: %d, Success Count: %d, Fail Count: %d\n",
-				rand1, i, node - i + 1);
+				rand, i, node - i + 1);
             break;
         }
         else if (ret == INSERT_ERROR_DUPLICATE_VALUE)
         {
-            duplist.push_back(rand1);
-            printf("Fail to Insert! %d : Duplicate Data\n", rand1);
+            duplist.push_back(rand);
+            printf("Fail to Insert! %d : Duplicate Data\n", rand);
         }
     }
    printf("Duplicate Data Count: %llu\n", duplist.size());
@@ -322,6 +326,7 @@ void TreeTester::CheckAscending()
     printf("=================\n");
     printf("FINISH ASCENDING CHECK!!\n");
     printf("=================\n");
+    delete[] data;
 }
 
 void TreeTester::CheckBlackBalance()
@@ -425,21 +430,23 @@ bool TreeTester::GetTreeDataForTest(set<int>& testSet)
         idx++;
     }
 
+    delete[] data;
     return true;
 }
 
 bool TreeTester::InsertForTest(int count, set<int>& testSet)
 {
     int ret;
+
+	mt19937 rng(20);
+	uniform_int_distribution<int> dist(0, INT_MAX); // 범위 지정
+
     for (int i = 0; i < count; i++)
     {
-        int rand1 = rand();
-        int rand2 = rand();
-        rand1 = rand1 << 7;
-        rand1 |= rand2;
+        int rand = dist(rng);
 
 #ifdef REDBLACK_TEST
-		ret = _RedBlackTree.InsertNode(rand1);
+		ret = _RedBlackTree.InsertNode(rand);
 #endif
 
 #ifdef BINART_TEST
@@ -447,14 +454,14 @@ bool TreeTester::InsertForTest(int count, set<int>& testSet)
 #endif
         if (ret == INSERT_ERROR_UNKNOWN)
         {
-            printf("Insert Unknown Error! Cur Data: %d\n", rand1);
+            printf("Insert Unknown Error! Cur Data: %d\n", rand);
             return false;
         }
         else if (ret == INSERT_ERROR_TREE_IS_FULL)
         {
             break;
         }
-        testSet.insert(rand1);
+        testSet.insert(rand);
     }
     return true;
 }

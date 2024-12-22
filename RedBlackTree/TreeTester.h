@@ -1,9 +1,10 @@
 #pragma once
 #include <windows.h>
 #include <stdio.h>
+#include <list>
 #include <set>
+#include <random>
 
-//#include "Profile.h"
 #include "RedBlackTree.h"
 #include "BinaryTree.h"
 
@@ -15,10 +16,6 @@ class TreeTester
 public:
 	TreeTester();
 	~TreeTester();
-
-public:
-	void DrawTree(HDC hdc);
-	void PrintMenu();
 
 public:
 	void MoveRight() { _iCurX += MOVE; }
@@ -38,13 +35,14 @@ public:
 	void CheckAscending();
 	void AutoTest();
 
+	void PrintMenu();
+
 private:
 	bool GetTreeDataForTest(set<int>& testSet);
 	bool InsertForTest(int count, set<int>& testSet);
 	bool DeleteForTest(int count, set<int>& testSet);
 
 private:
-	bool	 _bDrawRedBlackTree = true;
 	int		_iCurX = 0;
 	int		_iCurY = 0;
 	HPEN	_hBlackPen;

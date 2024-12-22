@@ -16,7 +16,7 @@
 *		DRAW 
 *=======================*/
 #define TREE_MAX	INT_MAX
-#define TEXT_LEN	8
+#define TEXT_LEN	15
 #define TEXT_PAD	8
 #define RADIUS		17
 
