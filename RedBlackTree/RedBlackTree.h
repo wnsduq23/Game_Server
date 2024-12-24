@@ -85,7 +85,8 @@ public:
 					Node* pNewNode = new Node(data, _pNil);
 					pNode->_pLeft = pNewNode;
 					pNewNode->_pParent = pNode;
-					BalanceAfterInsert(pNewNode);
+					if (pNewNode->_pParent->_color == RED)
+						BalanceAfterInsert(pNewNode);
 					_size++;
 					//printf("==================\n");
 					//printf("INSERT -----> %d  \n", data);
@@ -106,7 +107,8 @@ public:
 					Node* pNewNode = new Node(data, _pNil);
 					pNode->_pRight = pNewNode;
 					pNewNode->_pParent = pNode;
-					BalanceAfterInsert(pNewNode);
+					if (pNewNode->_pParent->_color == RED)
+						BalanceAfterInsert(pNewNode);
 					_size++;
 					//printf("==================\n");
 					//printf("INSERT -----> %d  \n", data);
@@ -170,8 +172,6 @@ public:
 		if (pNode->_pLeft == _pNil &&
 			pNode->_pRight == _pNil)
 		{
-			//printf("(0) ");
-
 			if (pNode == _pRoot)
 			{
 				_pRoot = _pNil;
@@ -195,12 +195,10 @@ public:
 				if (color == BLACK)
 					BalanceAfterDelete(_pNil, pParent);
 			}
-
 			_size--;
 		}
 		else if (pNode->_pLeft == _pNil)
 		{
-
 			if (pNode == _pRoot)
 			{
 				_pRoot = pNode->_pRight;
@@ -219,14 +217,13 @@ public:
 					pNode->_pParent->_pRight = pNode->_pRight;
 				}
 
-				Node* pChild = pNode->_pRight;
 				COLOR color = pNode->_color;
+				Node* pChild = pNode->_pRight;
 				delete(pNode);
 
 				if (color == BLACK)
 					BalanceAfterDelete(pChild, pChild->_pParent);
 			}
-
 			_size--;
 		}
 		else if (pNode->_pRight == _pNil)
@@ -250,14 +247,13 @@ public:
 					pNode->_pParent->_pRight = pNode->_pLeft;
 				}
 
-				Node* pChild = pNode->_pLeft;
 				COLOR color = pNode->_color;
+				Node* pChild = pNode->_pLeft;
 				delete(pNode);
 
 				if (color == BLACK)
 					BalanceAfterDelete(pChild, pChild->_pParent);
 			}
-
 			_size--;
 		}
 		else
@@ -323,78 +319,46 @@ public:
 private:
 	void BalanceAfterInsert(Node* pNode)
 	{
-		//R-R 발생했을 경우
 		while (pNode->_pParent->_color != BLACK)
 		{
-			bool bParentLeft = false;
-			if (pNode->_pParent == pNode->_pParent->_pParent->_pLeft)
-				bParentLeft = true;
+			bool isParentLeft = (pNode->_pParent == pNode->_pParent->_pParent->_pLeft);
+			Node* pUncle = isParentLeft ? pNode->_pParent->_pParent->_pRight : pNode->_pParent->_pParent->_pLeft;
 
-			// 삼촌이 R -> 색상반전
-			if (bParentLeft
-				&& pNode->_pParent->_pParent->_pRight->_color == RED)
+			// Case 1: Uncle is RED -> Recolor
+			if (pUncle->_color == RED)
 			{
 				pNode->_pParent->_color = BLACK;
-				pNode->_pParent->_pParent->_pRight->_color = BLACK;
-
-				if (pNode->_pParent->_pParent == _pRoot)
-				{
-					break;
-				}
-				else
-				{
-					pNode->_pParent->_pParent->_color = RED;
-					pNode = pNode->_pParent->_pParent;
-					continue;
-				}
-			}
-			else if (!bParentLeft
-				&& pNode->_pParent->_pParent->_pLeft->_color == RED)
-			{
-				pNode->_pParent->_color = BLACK;
-				pNode->_pParent->_pParent->_pLeft->_color = BLACK;
-
-				if (pNode->_pParent->_pParent == _pRoot)
-				{
-					break;
-				}
-				else
-				{
-					pNode->_pParent->_pParent->_color = RED;
-					pNode = pNode->_pParent->_pParent;
-					continue;
-				}
-			}
-			else if (bParentLeft
-				&& pNode->_pParent->_pParent->_pRight->_color == BLACK)
-			{
-				// LR case -> 이중 회전
-				if (pNode == pNode->_pParent->_pRight)
-				{
-					RotateLeft(pNode->_pParent);
-					pNode = pNode->_pLeft;
-				}
-
-				// LL case -> 싱글 회전
-				pNode->_pParent->_color = BLACK;
+				pUncle->_color = BLACK;
+				if (pNode->_pParent->_pParent == _pRoot) break;
 				pNode->_pParent->_pParent->_color = RED;
-				RotateRight(pNode->_pParent->_pParent);
-				break;
+				pNode = pNode->_pParent->_pParent;
 			}
-			else if (!bParentLeft
-				&& pNode->_pParent->_pParent->_pLeft->_color == BLACK)
-			{
-				// RL case -> 이중 회전
-				if (pNode == pNode->_pParent->_pLeft)
+			else // Case 2: Uncle is BLACK -> Rotation needed
+			{ 				
+				if (isParentLeft) 
 				{
-					RotateRight(pNode->_pParent);
-					pNode = pNode->_pRight;
+					if (pNode == pNode->_pParent->_pRight) 
+					{ // LR Case -> Left Rotate
+						RotateLeft(pNode->_pParent);
+						pNode = pNode->_pLeft;
+					}
+					// LL Case -> Right Rotate
+					pNode->_pParent->_color = BLACK;
+					pNode->_pParent->_pParent->_color = RED;
+					RotateRight(pNode->_pParent->_pParent);
 				}
-
-				// RR case -> 싱글 회전 
-				pNode->_pParent->_color = BLACK;
-				pNode->_pParent->_pParent->_color = RED;
-				RotateLeft(pNode->_pParent->_pParent);
+				else 
+				{
+					if (pNode == pNode->_pParent->_pLeft) 
+					{ // RL Case -> Right Rotate
+						RotateRight(pNode->_pParent);
+						pNode = pNode->_pRight;
+					}
+					// RR Case -> Left Rotate
+					pNode->_pParent->_color = BLACK;
+					pNode->_pParent->_pParent->_color = RED;
+					RotateLeft(pNode->_pParent->_pParent);
+				}
 				break;
 			}
 		}
@@ -404,18 +368,12 @@ private:
 	{
 		while (pNode->_color != RED)
 		{
-			bool bNodeLeft = false;
-			Node* pSibling = nullptr;
-			if (pNode == pParent->_pLeft)
-			{
-				bNodeLeft = true;
-				pSibling = pParent->_pRight;
-			}
-			else
-			{
-				pSibling = pParent->_pLeft;
-			}
+			bool bNodeLeft = (pNode == pParent->_pLeft);
+			Node* pSibling = bNodeLeft ? pParent->_pRight : pParent->_pLeft;
 
+			//Black을 내 쪽으로 가져오는 게 목표. 안되면 모든 경로 Black - 1
+
+			// Case 1: 형제가 Red
 			if (pSibling->_color == RED)
 			{
 				pSibling->_color = BLACK;
@@ -426,7 +384,9 @@ private:
 				pParent->_color = RED;
 				continue;
 			}
-			else if (pSibling->_color == BLACK &&
+
+			// Case 2: 형제, 형제 자식 모두 Black
+			if (pSibling->_color == BLACK &&
 				pSibling->_pLeft->_color == BLACK &&
 				pSibling->_pRight->_color == BLACK)
 			{
@@ -438,6 +398,8 @@ private:
 				continue;
 			}
 
+			// Case 3: 형제 자식 중에 하나만 Red이고
+			// pNode와 Red인 형제 자식의 좌우측이 동일 -> 이중 회전
 			if (bNodeLeft &&
 				pSibling->_color == BLACK &&
 				pSibling->_pLeft->_color == RED &&
@@ -457,6 +419,9 @@ private:
 				RotateLeft(pSibling);
 			}
 
+			// Case 4: 형제 자식이 모두 Red 이거나
+			// 하나만 Red이고 pNode와 Red인 형제 자식의 좌우측이 동일 X 또는
+			// Case 3에서 나온 결과물 -> 싱글 회전 후 return
 			if (bNodeLeft &&
 				pSibling->_color == BLACK &&
 				pSibling->_pRight->_color == RED)
@@ -467,7 +432,6 @@ private:
 				RotateLeft(pParent);
 				return;
 			}
-
 			else if (!bNodeLeft &&
 				pSibling->_color == BLACK &&
 				pSibling->_pLeft->_color == RED)
@@ -502,15 +466,16 @@ private:
 			if (pNode == pNode->_pParent->_pRight)
 				pNode->_pParent->_pRight = pNode->_pRight;
 			else if (pNode == pNode->_pParent->_pLeft)
-				pNode->_pParent->_pLeft = pNode->_pRight; // G -> M
+				pNode->_pParent->_pLeft = pNode->_pRight; // G -> N
 		}
 
-		Node* pGrandChild = pNode->_pRight->_pLeft; // C
-		pNode->_pRight->_pLeft = pNode; // M -> P
-		pNode->_pRight->_pParent = pNode->_pParent; // M -> G
-		pNode->_pParent = pNode->_pRight; // P -> M
-		pNode->_pRight = pGrandChild; // P -> C
-		pGrandChild->_pParent = pNode; // C -> P
+		Node* pGrandChild = pNode->_pRight->_pLeft; // CL
+		pNode->_pRight->_pLeft = pNode; // N -> P
+		pNode->_pRight->_pParent = pNode->_pParent; // N -> G
+		pNode->_pParent = pNode->_pRight; // P -> N
+		pNode->_pRight = pGrandChild; // P -> CL
+		if (pGrandChild != _pNil)
+			pGrandChild->_pParent = pNode; // CL -> P
 	}
 
 	void RotateRight(Node* pNode)
@@ -539,7 +504,8 @@ private:
 		pNode->_pLeft->_pParent = pNode->_pParent;
 		pNode->_pParent = pNode->_pLeft;
 		pNode->_pLeft = pGrandChild;
-		pGrandChild->_pParent = pNode;
+		if (pGrandChild != _pNil)
+			pGrandChild->_pParent = pNode;
 	}
 
 public:

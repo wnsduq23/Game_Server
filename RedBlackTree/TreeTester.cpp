@@ -18,6 +18,7 @@ TreeTester::TreeTester()
 
 TreeTester::~TreeTester()
 {
+
 }
 
 void TreeTester::DrawTree()
@@ -115,7 +116,7 @@ void TreeTester::InsertRandomNode()
 
     for (int i = 0; i < node; i++)
     {
-		int rand = dist(rng); // 첫 번째 난수
+		int rand = dist(rng);
         printf("Insert ==========> %d\n", rand);
 
 #ifdef REDBLACK_TEST
