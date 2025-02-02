@@ -1,6 +1,6 @@
 #pragma once
 
-constexpr int CACHE_SIZE = 512;
+constexpr int CACHE_COUNT = 512;
 constexpr int CACHE_WAY = 8;
 constexpr int CACHE_WAY_BIT = 3;
 
@@ -140,8 +140,8 @@ public:
 
 
 private:
-	CacheLine m_arrCacheL1[CACHE_SIZE];
+	CacheLine m_arrCacheL1[CACHE_COUNT];
 
 	// 경로 기록용
-	unsigned char m_arrCacheRoute[CACHE_SIZE / CACHE_WAY] = { 0, };
+	unsigned char m_arrCacheRoute[CACHE_COUNT / CACHE_WAY] = { 0, };
 };
