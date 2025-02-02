@@ -7,6 +7,7 @@ constexpr int CACHE_WAY_BIT = 3;
 // L1 캐시 시뮬레이터
 // L1 캐시 크기 32KB
 // Index 9 - WAY_BIT, offset 6 : tag 나머지
+// 캐시 라인 크기 64바이트
 
 __forceinline DWORD GetCacheIndex(UINT_PTR addr)
 {

@@ -28,6 +28,9 @@ int main()
 	int index = GetCacheIndex(addr);
 	printf("index = %d, 8Way\n", index);
 
+	printf("--------------------------------------\n");
+	printf("같은 인덱스일 때 캐시 미스 나는 지 테스트 \n");
+	printf("--------------------------------------\n");
 	bool isSuccess = cs.IsCacheHit((void*)addr);
 	if (isSuccess)
 		printf("1.Cache hit, %p,%p\n", addr, GetCacheTag(addr));
@@ -46,6 +49,9 @@ int main()
 	UINT_PTR temp = addr;
 
 	addr = (UINT_PTR)&a;
+	printf("--------------------------------------\n");
+	printf("L1 캐시 크기 32kb인지 테스트 -(1) \n");
+	printf("--------------------------------------\n");
 	for (int i = 1; i <= 9; ++i)
 	{
 		isSuccess = cs.IsCacheHit((void*)addr);
@@ -59,6 +65,9 @@ int main()
 	addr = (UINT_PTR)&a;
 	addr += offset;
 
+	printf("--------------------------------------\n");
+	printf("L1 캐시 크기 32kb인지 테스트 -(2)  \n");
+	printf("--------------------------------------\n");
 	for (int i = 2; i <= 8; ++i)
 	{
 		isSuccess = cs.IsCacheHit((void*)addr);
@@ -73,6 +82,9 @@ int main()
 	Test test;
 	addr = (UINT_PTR)&test.num1;
 	isSuccess = cs.IsCacheHit((void*)addr);
+	printf("--------------------------------------\n");
+	printf("캐시 라인 크기 64바이트 확인 테스트  \n");
+	printf("--------------------------------------\n");
 	if (isSuccess)
 		printf("1.Cache hit, %p,%p,%d,%p\n", addr, GetCacheTag(addr), GetCacheIndex(addr), addr & 0x3F);
 	else
