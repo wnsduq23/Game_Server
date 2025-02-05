@@ -1743,7 +1743,6 @@ bool JumpPointSearch::CheckDiagCorner(Pos diag, DIR diagDir, DIR searchDir, Pos&
 		}
 
 		_pNodeMgr->_checkedDiagList.push_back(Pos(r._x, r._y));
-
 		return false;
 	}
 	break;
