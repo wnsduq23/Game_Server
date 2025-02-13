@@ -189,7 +189,7 @@ void IngameManager::UpdateSector(Player* pPlayer, UINT16 direction)
 	{
 		if (pPlayer == (*iter))
 		{
-			pPlayer->GetSector()->_players.erase(iter); // erase 말고 remove는?
+			pPlayer->GetSector()->_players.erase(iter); // check
 			break;
 		}
 	}
@@ -211,7 +211,6 @@ void IngameManager::UpdateSector(Player* pPlayer, UINT16 direction)
 		EnqMsgOneSector(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), createMeToOtherRet, new_updated_sector[i]);
 
 	// 섹터 안으로 들어오는 동작 send
-	// 얘는 GetStateMoving() 확인할 필요가 없나??
 	pPlayer->GetSession()->_sendSerialPacket.Clear();
 	int moveMeToOtherRet = SetSCPacket_MOVE_START(&pPlayer->GetSession()->_sendSerialPacket,
 		pPlayer->GetID(), pPlayer->GetMoveDirection(), pPlayer->GetX(), pPlayer->GetY());
@@ -236,7 +235,7 @@ void IngameManager::UpdateSector(Player* pPlayer, UINT16 direction)
 				(*iter)->GetID(), (*iter)->GetHeadDirection(), (*iter)->GetX(), (*iter)->GetY(), (*iter)->GetHp());
 			NetworkManager::GetInstance().EnqMsgUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), createOtherRet, pPlayer->GetSession());
 
-			if ((*iter)->GetStateMoving())
+			if ((*iter)->GetStateMoving()) // check
 			{
 				pPlayer->GetSession()->_sendSerialPacket.Clear();
 				int MoveOtherRet = SetSCPacket_MOVE_START(&pPlayer->GetSession()->_sendSerialPacket,
@@ -258,7 +257,7 @@ void IngameManager::UpdateSector(Player* pPlayer, UINT16 direction)
 	}
 
 	pPlayer->SetSector(new_around_sector);
-	new_around_sector->_players.push_back(pPlayer); //이거 의미가 없는데??? 
+	new_around_sector->_players.push_back(pPlayer); // check 
 
 	//PRO_END(L"Content: Update Sector");
 }

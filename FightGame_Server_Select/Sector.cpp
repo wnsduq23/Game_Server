@@ -14,7 +14,7 @@ Sector::~Sector()
 
 void Sector::InitializeSector(short xIndex, short yIndex)
 {
-	_xIndex = xIndex; // ±ª¿Ã?
+	_xIndex = xIndex; // check
 	_yIndex = yIndex;
 
 	if (_xIndex < 2 || _xIndex >= (dfSECTOR_CNT_X - 2) ||
@@ -25,5 +25,5 @@ void Sector::InitializeSector(short xIndex, short yIndex)
 	_yPosMin = (yIndex - 2) * dfSECTOR_SIZE_Y;
 	_xPosMax = (xIndex - 1) * dfSECTOR_SIZE_X;
 	_yPosMax = (yIndex - 1) * dfSECTOR_SIZE_Y;
-	_players.reserve(dfDEFAULT_PLAYERS_PER_SECTOR); // ø÷ 1024?
+	_players.reserve(dfDEFAULT_PLAYERS_PER_SECTOR); // check
 }

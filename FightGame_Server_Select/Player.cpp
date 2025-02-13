@@ -181,7 +181,7 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 		iter = pSector->_around[dfMOVE_DIR_INPLACE]->_players.begin();
 		for (; iter < pSector->_around[dfMOVE_DIR_INPLACE]->_players.end(); iter++)
 		{
-			if ((*iter) != this)// this라고 하면 될라나?
+			if ((*iter) != this)
 			{
 				int dist = _x - (*iter)->_x;
 				if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
