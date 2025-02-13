@@ -1,30 +1,30 @@
-#include "SerializeBuffer.h"
+#include "SerializePacket.h"
 #include <stdio.h>
 
-SerializeBuffer::SerializeBuffer()
+SerializePacket::SerializePacket()
     : _iBufferSize(eBUFFER_DEFAULT), _iDataSize(0), _iReadPos(0), _iWritePos(0)
 {
     _chpBuffer = new char[_iBufferSize];
 }
 
-SerializeBuffer::SerializeBuffer(int iBufferSize)
+SerializePacket::SerializePacket(int iBufferSize)
     : _iBufferSize(iBufferSize), _iDataSize(0), _iReadPos(0), _iWritePos(0)
 {
     _chpBuffer = new char[_iBufferSize];
 }
 
-SerializeBuffer::~SerializeBuffer()
+SerializePacket::~SerializePacket()
 {
     delete[] _chpBuffer;
 }
 
-void SerializeBuffer::Clear(void)
+void SerializePacket::Clear(void)
 {
     _iReadPos = 0;
     _iWritePos = 0;
 }
 
-int SerializeBuffer::Resize(int iBufferSize)
+int SerializePacket::Resize(int iBufferSize)
 {
     if (iBufferSize > eBUFFER_MAX)
     {
@@ -43,34 +43,34 @@ int SerializeBuffer::Resize(int iBufferSize)
     return _iBufferSize;
 }
 
-int	SerializeBuffer::GetDataSize(void)
+int	SerializePacket::GetDataSize(void)
 {
     _iDataSize = _iWritePos - _iReadPos;
     return _iDataSize;
 }
 
-int SerializeBuffer::MoveWritePos(int iSize)
+int SerializePacket::MoveWritePos(int iSize)
 {
     if (iSize < 0) return -1;
     _iWritePos += iSize;
     return iSize;
 }
 
-int SerializeBuffer::MoveReadPos(int iSize)
+int SerializePacket::MoveReadPos(int iSize)
 {
     if (iSize < 0) return -1;
     _iReadPos += iSize;
     return iSize;
 }
 
-SerializeBuffer& SerializeBuffer::operator=(SerializeBuffer& clSrSerializeBuffer)
+SerializePacket& SerializePacket::operator=(SerializePacket& clSrSerializePacket)
 {
-    *this = clSrSerializeBuffer;
+    *this = clSrSerializePacket;
     return *this;
 }
 
 
-SerializeBuffer& SerializeBuffer::operator<<(float fValue)
+SerializePacket& SerializePacket::operator<<(float fValue)
 {
     if (_iBufferSize - _iWritePos < sizeof(fValue))
         Resize(_iBufferSize * 1.5f);
@@ -83,7 +83,7 @@ SerializeBuffer& SerializeBuffer::operator<<(float fValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator<<(double dValue)
+SerializePacket& SerializePacket::operator<<(double dValue)
 {
     if (_iBufferSize - _iWritePos < sizeof(dValue))
         Resize(_iBufferSize * 1.5f);
@@ -96,7 +96,7 @@ SerializeBuffer& SerializeBuffer::operator<<(double dValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator>>(float& fValue)
+SerializePacket& SerializePacket::operator>>(float& fValue)
 {
     if (_iWritePos - _iReadPos < sizeof(float))
     {
@@ -112,7 +112,7 @@ SerializeBuffer& SerializeBuffer::operator>>(float& fValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator>>(double& dValue)
+SerializePacket& SerializePacket::operator>>(double& dValue)
 {
     if (_iWritePos - _iReadPos < sizeof(double))
     {
@@ -128,7 +128,7 @@ SerializeBuffer& SerializeBuffer::operator>>(double& dValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator<<(unsigned char byValue)
+SerializePacket& SerializePacket::operator<<(unsigned char byValue)
 {
     if (_iBufferSize - _iWritePos < sizeof(byValue))
         Resize(_iBufferSize * 1.5f);
@@ -141,7 +141,7 @@ SerializeBuffer& SerializeBuffer::operator<<(unsigned char byValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator<<(char chValue)
+SerializePacket& SerializePacket::operator<<(char chValue)
 {
     if (_iBufferSize - _iWritePos < sizeof(chValue))
         Resize(_iBufferSize * 1.5f);
@@ -154,7 +154,7 @@ SerializeBuffer& SerializeBuffer::operator<<(char chValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator<<(short shValue)
+SerializePacket& SerializePacket::operator<<(short shValue)
 {
     if (_iBufferSize - _iWritePos < sizeof(shValue))
         Resize(_iBufferSize * 1.5f);
@@ -167,7 +167,7 @@ SerializeBuffer& SerializeBuffer::operator<<(short shValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator<<(unsigned short wValue)
+SerializePacket& SerializePacket::operator<<(unsigned short wValue)
 {
     if (_iBufferSize - _iWritePos < sizeof(wValue))
         Resize(_iBufferSize * 1.5f);
@@ -180,7 +180,7 @@ SerializeBuffer& SerializeBuffer::operator<<(unsigned short wValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator<<(int iValue)
+SerializePacket& SerializePacket::operator<<(int iValue)
 {
     if (_iBufferSize - _iWritePos < sizeof(iValue))
         Resize(_iBufferSize * 1.5f);
@@ -194,7 +194,7 @@ SerializeBuffer& SerializeBuffer::operator<<(int iValue)
 }
 
 
-SerializeBuffer& SerializeBuffer::operator << (UINT32 uiValue)
+SerializePacket& SerializePacket::operator << (UINT32 uiValue)
 {
     if (_iBufferSize - _iWritePos < sizeof(uiValue))
         Resize(_iBufferSize * 1.5f);
@@ -208,7 +208,7 @@ SerializeBuffer& SerializeBuffer::operator << (UINT32 uiValue)
 
 }
 
-SerializeBuffer& SerializeBuffer::operator<<(long lValue)
+SerializePacket& SerializePacket::operator<<(long lValue)
 {
     if (_iBufferSize - _iWritePos < sizeof(lValue))
         Resize(_iBufferSize * 1.5f);
@@ -221,7 +221,7 @@ SerializeBuffer& SerializeBuffer::operator<<(long lValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator<<(__int64 iValue)
+SerializePacket& SerializePacket::operator<<(__int64 iValue)
 {
     if (_iBufferSize - _iWritePos < sizeof(iValue))
         Resize(_iBufferSize * 1.5f);
@@ -234,7 +234,7 @@ SerializeBuffer& SerializeBuffer::operator<<(__int64 iValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator>>(BYTE& byValue)
+SerializePacket& SerializePacket::operator>>(BYTE& byValue)
 {
     if (_iWritePos - _iReadPos < sizeof(BYTE))
     {
@@ -250,7 +250,7 @@ SerializeBuffer& SerializeBuffer::operator>>(BYTE& byValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator>>(char& chValue)
+SerializePacket& SerializePacket::operator>>(char& chValue)
 {
     if (_iWritePos - _iReadPos < sizeof(char))
     {
@@ -266,7 +266,7 @@ SerializeBuffer& SerializeBuffer::operator>>(char& chValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator>>(short& shValue)
+SerializePacket& SerializePacket::operator>>(short& shValue)
 {
     if (_iWritePos - _iReadPos < sizeof(short))
     {
@@ -282,7 +282,7 @@ SerializeBuffer& SerializeBuffer::operator>>(short& shValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator>>(WORD& wValue)
+SerializePacket& SerializePacket::operator>>(WORD& wValue)
 {
     if (_iWritePos - _iReadPos < sizeof(WORD))
     {
@@ -298,7 +298,7 @@ SerializeBuffer& SerializeBuffer::operator>>(WORD& wValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator>>(int& iValue)
+SerializePacket& SerializePacket::operator>>(int& iValue)
 {
     if (_iWritePos - _iReadPos < sizeof(int))
     {
@@ -314,7 +314,7 @@ SerializeBuffer& SerializeBuffer::operator>>(int& iValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator>>(DWORD& dwValue)
+SerializePacket& SerializePacket::operator>>(DWORD& dwValue)
 {
     if (_iWritePos - _iReadPos < sizeof(DWORD))
     {
@@ -330,7 +330,7 @@ SerializeBuffer& SerializeBuffer::operator>>(DWORD& dwValue)
     return *this;
 }
 
-SerializeBuffer& SerializeBuffer::operator>>(__int64& iValue)
+SerializePacket& SerializePacket::operator>>(__int64& iValue)
 {
     if (_iWritePos - _iReadPos < sizeof(__int64))
     {
@@ -346,7 +346,7 @@ SerializeBuffer& SerializeBuffer::operator>>(__int64& iValue)
     return *this;
 }
 
-int SerializeBuffer::GetData(char* chpDest, int iSize)
+int SerializePacket::GetData(char* chpDest, int iSize)
 {
     if (_iWritePos - _iReadPos < iSize)
     {
@@ -361,7 +361,7 @@ int SerializeBuffer::GetData(char* chpDest, int iSize)
     return iSize;
 }
 
-int SerializeBuffer::PutData(char* chpSrc, int iSrcSize)
+int SerializePacket::PutData(char* chpSrc, int iSrcSize)
 {
     if (_iBufferSize - _iWritePos < iSrcSize)
         Resize(_iBufferSize + (iSrcSize * 1.5f));
@@ -372,4 +372,38 @@ int SerializeBuffer::PutData(char* chpSrc, int iSrcSize)
 
     _iWritePos += iSrcSize;
     return iSrcSize;
+}
+
+int	SerializePacket::PeekData(char* chpDest, int size)
+{
+	if (_iWritePos - _iReadPos < size)
+	{
+		/*LOG(L"FightGame", CSystemLog::ERROR_LEVEL,
+			L"%s[%d]: used size %d < req size: %llu\n",
+			_T(__FUNCTION__), __LINE__, _writePos - _readPos, size);
+
+		::wprintf(L"%s[%d]: used size %d < req size: %llu\n",
+			_T(__FUNCTION__), __LINE__, _writePos - _readPos, size);*/
+
+		return -1;
+	}
+
+	memcpy_s(chpDest, size, &_chpBuffer[_iReadPos], size);
+	return size;
+}
+
+int SerializePacket::CheckData(int size)
+{
+	if (_iWritePos - _iReadPos < size)
+	{
+		/*LOG(L"FightGame", CSystemLog::ERROR_LEVEL,
+			L"%s[%d]: used size %d < req size: %llu\n",
+			_T(__FUNCTION__), __LINE__, _writePos - _readPos, size);
+
+		::wprintf(L"%s[%d]: used size %d < req size: %llu\n",
+			_T(__FUNCTION__), __LINE__, _writePos - _readPos, size);*/
+
+		return -1;
+	}
+    //TODO:
 }

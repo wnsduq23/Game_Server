@@ -1,398 +1,1013 @@
-#include "PlayerManager.h"
-#include "CreateSCPacket.h"
-#include "PacketDefine.h"
+#include "Player.h"
+#include "SetSCPacket.h"
+#include "Protocol.h"
+#include "IngameManager.h"
 
-//#define RECV_PACKET_DEBUG
+#define RECV_PACKET_DEBUG
 
-Player::Player(Session* pSession, UINT32 ID)
-	: _pSession(pSession), _ID(ID),
-	_headDirection(dfPACKET_MOVE_DIR_RR),
-	_moveDirection(dfPACKET_MOVE_DIR_LL),
-	_x(dfINIT_X), _y(dfINIT_Y), _hp(dfMAX_HP),
-	_packet(0), _state(dfPLAYER_STATE_ALIVE)
+Player::Player(Session* pSession, int ID)
+	: _pSession(pSession), _pSector(nullptr), _ID(ID),
+	_headDirection(dfMOVE_DIR_RR),
+	_moveDirection(dfMOVE_DIR_LL),
+	_hp(dfMAX_HP), _bMove(false)
 {
-
+	_x = rand() % dfRANGE_MOVE_RIGHT;
+	_y = rand() % dfRANGE_MOVE_BOTTOM;
 }
 Player::~Player()
 {
-	SetStateDead();
+}
+
+bool Player::CheckMovable(short x, short y)
+{
+	if (x < dfRANGE_MOVE_LEFT || x > dfRANGE_MOVE_RIGHT ||
+		y < dfRANGE_MOVE_TOP || y > dfRANGE_MOVE_BOTTOM)
+		return false;
+
+	return true;
 }
 
 void Player::MoveUpdate()
 {
-	if (_x < dfRANGE_MOVE_LEFT || _x > dfRANGE_MOVE_RIGHT ||
-		_y > dfRANGE_MOVE_BOTTOM || _y < dfRANGE_MOVE_TOP)
+	switch (_moveDirection)
 	{
+	case dfMOVE_DIR_LL:
+		if (CheckMovable(_x - dfSPEED_PLAYER_X, _y))
+			_x -= dfSPEED_PLAYER_X;
 
-	}
-	else if (GetStateMoving())
-	{
-		switch (_moveDirection)
+		if (_x < _pSector->_xPosMin)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_LL);
+		break;
+
+	case dfMOVE_DIR_LU:
+		if (CheckMovable(_x - dfSPEED_PLAYER_X, _y - dfSPEED_PLAYER_Y))
 		{
-		case dfPACKET_MOVE_DIR_LL:
-			_x -= dfMOVE_X;
-			break;
-
-		case dfPACKET_MOVE_DIR_LU:
-			_x -= dfMOVE_X;
-			_y -= dfMOVE_Y;
-			break;
-
-		case dfPACKET_MOVE_DIR_UU:
-			_y -= dfMOVE_Y;
-			break;
-
-		case dfPACKET_MOVE_DIR_RU:
-			_x += dfMOVE_X;
-			_y -= dfMOVE_Y;
-			break;
-
-		case dfPACKET_MOVE_DIR_RR:
-			_x += dfMOVE_X;
-			break;
-
-		case dfPACKET_MOVE_DIR_RD:
-			_x += dfMOVE_X;
-			_y += dfMOVE_Y;
-			break;
-
-		case dfPACKET_MOVE_DIR_DD:
-			_y += dfMOVE_Y;
-			break;
-
-		case dfPACKET_MOVE_DIR_LD:
-			_x -= dfMOVE_X;
-			_y += dfMOVE_Y;
-			break;
+			_x -= dfSPEED_PLAYER_X;
+			_y -= dfSPEED_PLAYER_Y;
 		}
+
+		if (_x < _pSector->_xPosMin &&
+			_y < _pSector->_yPosMin)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_LU);
+
+		else if (_x < _pSector->_xPosMin)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_LL);
+
+		else if (_y < _pSector->_yPosMin)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_UU);
+		break;
+
+	case dfMOVE_DIR_UU:
+		if (CheckMovable(_x, _y - dfSPEED_PLAYER_Y))
+			_y -= dfSPEED_PLAYER_Y;
+		if (_y < _pSector->_yPosMin)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_UU);
+		break;
+
+	case dfMOVE_DIR_RU:
+		if (CheckMovable(_x + dfSPEED_PLAYER_X, _y - dfSPEED_PLAYER_Y))
+		{
+			_x += dfSPEED_PLAYER_X;
+			_y -= dfSPEED_PLAYER_Y;
+		}
+
+		if (_x > _pSector->_xPosMax &&
+			_y < _pSector->_yPosMin)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_RU);
+
+		else if (_x > _pSector->_xPosMax)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_RR);
+
+		else if (_y < _pSector->_yPosMin)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_UU);
+		break;
+
+	case dfMOVE_DIR_RR:
+		if (CheckMovable(_x + dfSPEED_PLAYER_X, _y))
+			_x += dfSPEED_PLAYER_X;
+
+		if (_x > _pSector->_xPosMax)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_RR);
+		break;
+
+	case dfMOVE_DIR_RD:
+		if (CheckMovable(_x + dfSPEED_PLAYER_X, _y + dfSPEED_PLAYER_Y))
+		{
+			_x += dfSPEED_PLAYER_X;
+			_y += dfSPEED_PLAYER_Y;
+		}
+
+		if (_x > _pSector->_xPosMax &&
+			_y > _pSector->_yPosMax)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_RD);
+
+		else if (_x > _pSector->_xPosMax)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_RR);
+
+		else if (_y > _pSector->_yPosMax)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_DD);
+		break;
+
+	case dfMOVE_DIR_DD:
+		if (CheckMovable(_x, _y + dfSPEED_PLAYER_Y))
+			_y += dfSPEED_PLAYER_Y;
+
+		if (_y > _pSector->_yPosMax)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_DD);
+		break;
+
+	case dfMOVE_DIR_LD:
+		if (CheckMovable(_x - dfSPEED_PLAYER_X, _y + dfSPEED_PLAYER_Y))
+		{
+			_x -= dfSPEED_PLAYER_X;
+			_y += dfSPEED_PLAYER_Y;
+		}
+
+		if (_x < _pSector->_xPosMin &&
+			_y > _pSector->_yPosMax)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_LD);
+
+		else if (_x < _pSector->_xPosMin)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_LL);
+
+		else if (_y > _pSector->_yPosMax)
+			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_DD);
+		break;
 	}
 }
 
-void Player::TakeDamage(UINT8 damage)
+void Player::SetPlayerMoveStart(char& moveDirection, short& x, short& y)
 {
-	_hp -= damage;
-	if (_hp <= 0 || _hp > 100)
-	{
-		_hp = 0;
-		SetStateDead();
-	}
-}
-
-void Player::DeqFromRecvbufANDHandlePacket()
-{
-		int iUsedSize = _pSession->_recvBuf.GetUseSize();
-	while (iUsedSize > 0)
-	{
-		if (iUsedSize <= dfPACKET_HEADER_SIZE)
-			break;
-
-		stPACKET_HEADER header;
-		int peekRet = _pSession->_recvBuf.Peek((char*)&header, dfPACKET_HEADER_SIZE);
-		if (peekRet != dfPACKET_HEADER_SIZE)
-		{
-			printf("Error! Func %s Line %d\n", __func__, __LINE__);
-			SetStateDead();
-			return;
-		}
-
-		if (header.code != dfPACKET_HEADER_CODE)
-		{
-			printf("Error! Wrong Header Code! - Func %s Line %d\n", __func__, __LINE__);
-			SetStateDead();
-			return;
-		}
-
-		if (iUsedSize < dfPACKET_HEADER_SIZE + header.payload_size)
-			break;
-
-		int moveReadRet = _pSession->_recvBuf.MoveReadPos(dfPACKET_HEADER_SIZE);
-		if (moveReadRet != dfPACKET_HEADER_SIZE)
-		{
-			printf("Error! Func %s Line %d\n", __func__, __LINE__);
-			SetStateDead();
-			return;
-		}
-
-		try {
-			_packetBuffer.Clear();
-
-			switch (header.action_type)
-			{
-			case dfPACKET_CS_MOVE_START:
-				HandlePacketMoveStart();
-				break;
-
-			case dfPACKET_CS_MOVE_STOP:
-				HandlePacketMoveStop();
-				break;
-
-			case dfPACKET_CS_ATTACK1:
-				HandlePacketAttack1();
-				break;
-
-			case dfPACKET_CS_ATTACK2:
-				HandlePacketAttack2();
-				break;
-
-			case dfPACKET_CS_ATTACK3:
-				HandlePacketAttack3();
-				break;
-
-			default:
-				printf("Unknown packet type. Func %s, Line %d\n", __func__, __LINE__);
-				return;
-			}
-
-		}
-		catch (...) {
-			printf("Packet Buffer Error. Func %s, Line %d\n", __func__, __LINE__);
-			return;
-		}
-		iUsedSize = _pSession->_recvBuf.GetUseSize();
-	}
-}
-
-void Player::HandlePacketMoveStart()
-{
-	char moveDirection;
-	short X;
-	short Y;
-
-	int size = sizeof(moveDirection) + sizeof(X) + sizeof(Y);
-	int dequeueRet = _pSession->_recvBuf.Dequeue(_packetBuffer.GetWritePtr(), size);
-	if (dequeueRet != size)
-	{
-		printf("Error! Func %s Line %d\n", __func__, __LINE__);
-		SetStateDead();
-		return;
-	}
-	_packetBuffer.MoveWritePos(size);
-
-	_packetBuffer >> moveDirection;
-	_packetBuffer >> X;
-	_packetBuffer >> Y;
-
-	if (abs(X - _x) > dfERROR_RANGE ||
-		abs(Y - _y) > dfERROR_RANGE)
-	{
-		SetStateDead();
-		return;
-	}
-
+	_x = x;
+	_y = y;
+	_bMove = true;
 	_moveDirection = moveDirection;
+
 	switch (moveDirection)
 	{
-	case dfPACKET_MOVE_DIR_LL:
-	case dfPACKET_MOVE_DIR_LU:
-	case dfPACKET_MOVE_DIR_LD:
-		_headDirection = dfPACKET_MOVE_DIR_LL;
+	case  dfMOVE_DIR_LL:
+	case  dfMOVE_DIR_LU:
+	case  dfMOVE_DIR_LD:
+		_headDirection = dfMOVE_DIR_LL;
 		break;
 
-	case dfPACKET_MOVE_DIR_RR:
-	case dfPACKET_MOVE_DIR_RU:
-	case dfPACKET_MOVE_DIR_RD:
-		_headDirection = dfPACKET_MOVE_DIR_RR;
+	case  dfMOVE_DIR_RU:
+	case  dfMOVE_DIR_RR:
+	case  dfMOVE_DIR_RD:
+		_headDirection = dfMOVE_DIR_RR;
 		break;
-	}
-
-	_x = X;
-	_y = Y;
-#ifdef RECV_PACKET_DEBUG
-	printf("===================================\n\
-%d: MOVE START\n\n\
-packetMoveStart.headDirection: %d\n\
-packetMoveStart.X: %d\n\
-packetMoveStart.Y: %d\n\n\
-now moveDirection: %d\n\
-now X: %d\n\
-now Y: %d\n\
-====================================\n\n",
-_ID, _headDirection, X, Y, _moveDirection, _x, _y);
-#endif
-
-	SetPacketMoveStart();
-	SetStateMoveStart();
+	}	
 }
 
-void Player::HandlePacketMoveStop()
+void Player::SetPlayerMoveStop(char& direction, short& x, short& y)
 {
-	char headDirection;
-	short X;
-	short Y;
-
-	int size = sizeof(headDirection) + sizeof(X) + sizeof(Y);
-	int dequeueRet = _pSession->_recvBuf.Dequeue(_packetBuffer.GetWritePtr(), size);
-	if (dequeueRet != size)
-	{
-		printf("Error! Func %s Line %d\n", __func__, __LINE__);
-		SetStateDead();
-		return;
-	}
-	_packetBuffer.MoveWritePos(size);
-
-	_packetBuffer >> headDirection;
-	_packetBuffer >> X;
-	_packetBuffer >> Y;
-
-	if (abs(X - _x) > dfERROR_RANGE ||
-		abs(Y - _y) > dfERROR_RANGE)
-	{
-		SetStateDead();
-		return;
-	}
-
-	_headDirection = headDirection;
-	_x = X;
-	_y = Y;
-
-#ifdef RECV_PACKET_DEBUG
-	printf("===================================\n\
-%d: MOVE STOP\n\n\
-packetMoveStop.headDirection: %d\n\
-packetMoveStop.X: %d\n\
-packetMoveStop.Y: %d\n\n\
-now moveDirection: %d\n\
-now X: %d\n\
-now Y: %d\n\
-====================================\n\n",
-_ID, _headDirection, X, Y, _moveDirection, _x, _y);
-#endif
-
-	SetPacketMoveStop();
-	SetStateMoveStop();
+	_x = x;
+	_y = y;
+	_bMove = false;
+	_headDirection = direction;	
 }
 
-void Player::HandlePacketAttack1()
+void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x, short& y)
 {
-	char headDirection;
-	short X;
-	short Y;
+	_x = x;
+	_y = y;
+	_headDirection = direction;
 
-	int size = sizeof(headDirection) + sizeof(X) + sizeof(Y);
-	int dequeueRet = _pSession->_recvBuf.Dequeue(_packetBuffer.GetWritePtr(), size);
-	if (dequeueRet != size)
+	if (direction == dfMOVE_DIR_LL)
 	{
-		printf("Error! Func %s Line %d\n", __func__, __LINE__);
-		SetStateDead();
-		return;
+		vector<Player*>::iterator iter;
+		Sector* pSector = _pSector;
+
+		iter = pSector->_around[dfMOVE_DIR_INPLACE]->_players.begin();
+		for (; iter < pSector->_around[dfMOVE_DIR_INPLACE]->_players.end(); iter++)
+		{
+			if ((*iter) != this)// this라고 하면 될라나?
+			{
+				int dist = _x - (*iter)->_x;
+				if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
+					abs((*iter)->_y - _y) <= dfATTACK1_RANGE_Y)
+				{
+					pDamagedPlayer = (*iter);
+					pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
+
+					if (pDamagedPlayer->_hp <= 0)
+					{
+						//_deadCnt++;
+						pDamagedPlayer->GetSession()->SetSessionDead();
+					}
+					return;
+				}
+			}
+		}
+
+		if (_x <= pSector->_xPosMin + dfATTACK1_RANGE_X)
+		{
+			iter = pSector->_around[dfMOVE_DIR_LL]->_players.begin();
+			for (; iter < pSector->_around[dfMOVE_DIR_LL]->_players.end(); iter++)
+			{
+				int dist = _x - (*iter)->_x;
+				if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
+					abs((*iter)->_y - _y) <= dfATTACK1_RANGE_Y)
+				{
+					pDamagedPlayer = (*iter);
+					pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
+
+					if (pDamagedPlayer->_hp <= 0)
+					{
+						//_deadCnt++;
+						pDamagedPlayer->GetSession()->SetSessionDead();
+					}
+					return;
+				}
+			}
+
+			if (_y <= pSector->_yPosMin + dfATTACK1_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_LD]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_LD]->_players.end(); iter++)
+				{
+					int dist = _x - (*iter)->_x;
+					if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK1_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+			else if (_y >= pSector->_yPosMax - dfATTACK1_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_LU]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_LU]->_players.end(); iter++)
+				{
+					int dist = _x - (*iter)->_x;
+					if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK1_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+		}
+		else
+		{
+			if (_y <= pSector->_yPosMin + dfATTACK1_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_DD]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_DD]->_players.end(); iter++)
+				{
+					int dist = _x - (*iter)->_x;
+					if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK1_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+			else if (_y >= pSector->_yPosMax - dfATTACK1_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_UU]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_UU]->_players.end(); iter++)
+				{
+					int dist = _x - (*iter)->_x;
+					if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK1_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+		}
 	}
-	_packetBuffer.MoveWritePos(size);
-
-	_packetBuffer >> headDirection;
-	_packetBuffer >> X;
-	_packetBuffer >> Y;
-
-
-	if (abs(X - _x) > dfERROR_RANGE ||
-		abs(Y - _y) > dfERROR_RANGE)
+	else if (direction == dfMOVE_DIR_RR)
 	{
-		SetStateDead();
-		return;
-	}
+		vector<Player*>::iterator iter;
+		Sector* pSector = _pSector;
+		
+		iter = pSector->_around[dfMOVE_DIR_INPLACE]->_players.begin();
+		for (; iter < pSector->_around[dfMOVE_DIR_INPLACE]->_players.end(); iter++)
+		{
+			if ((*iter) != this)
+			{
+				int dist = (*iter)->_x - _x;
+				if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
+					abs((*iter)->_y - _y) <= dfATTACK1_RANGE_Y)
+				{
+					pDamagedPlayer = (*iter);
+					pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-	_headDirection = headDirection;
-	_x = X;
-	_y = Y;
-#ifdef RECV_PACKET_DEBUG
-	printf("===================================\n\
-%d: ATTACK 1\n\n\
-packetAttack1.headDirection: %d\n\
-packetAttack1.X: %d\n\
-packetAttack1.Y: %d\n\n\
-now X: %d\n\
-now Y: %d\n\
-====================================\n\n",
-_ID, headDirection, X, Y, _x, _y);
-#endif
-	SetPacketAttack1();
+					if (pDamagedPlayer->_hp <= 0)
+					{
+						//_deadCnt++;
+						pDamagedPlayer->GetSession()->SetSessionDead();
+					}
+					return;
+				}
+			}
+		}
+
+		if (_x >= pSector->_xPosMax - dfATTACK1_RANGE_X)
+		{
+			iter = pSector->_around[dfMOVE_DIR_RR]->_players.begin();
+			for (; iter < pSector->_around[dfMOVE_DIR_RR]->_players.end(); iter++)
+			{
+				int dist = (*iter)->_x - _x;
+				if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
+					abs((*iter)->_y - _y) <= dfATTACK1_RANGE_Y)
+				{
+					pDamagedPlayer = (*iter);
+					pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
+
+					if (pDamagedPlayer->_hp <= 0)
+					{
+						//_deadCnt++;
+						pDamagedPlayer->GetSession()->SetSessionDead();
+					}
+					return;
+				}
+			}
+
+			if (_y >= pSector->_yPosMax - dfATTACK1_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_RU]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_RU]->_players.end(); iter++)
+				{
+					int dist = (*iter)->_x - _x;
+					if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK1_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+			else if(_y <= pSector->_yPosMin + dfATTACK1_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_RD]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_RD]->_players.end(); iter++)
+				{
+					int dist = (*iter)->_x - _x;
+					if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK1_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+		}
+		else
+		{
+			if (_y >= pSector->_yPosMax - dfATTACK1_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_UU]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_UU]->_players.end(); iter++)
+				{
+					int dist = (*iter)->_x - _x;
+					if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK1_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+			else if (_y <= pSector->_yPosMin + dfATTACK1_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_DD]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_DD]->_players.end(); iter++)
+				{
+					int dist = (*iter)->_x - _x;
+					if (dist >= 0 && dist <= dfATTACK1_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK1_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+		}
+	}
 }
 
-void Player::HandlePacketAttack2()
+void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x, short& y)
 {
-	char headDirection;
-	short X;
-	short Y;
+	_x = x;
+	_y = y;
+	_headDirection = direction;
 
-	int size = sizeof(headDirection) + sizeof(X) + sizeof(Y);
-	int dequeueRet = _pSession->_recvBuf.Dequeue(_packetBuffer.GetWritePtr(), size);
-	if (dequeueRet != size)
+	if (direction == dfMOVE_DIR_LL)
 	{
-		printf("Error! Func %s Line %d\n", __func__, __LINE__);
-		SetStateDead();
-		return;
+		vector<Player*>::iterator iter;
+		Sector* pSector = _pSector;
+
+		iter = pSector->_around[dfMOVE_DIR_INPLACE]->_players.begin();
+		for (; iter < pSector->_around[dfMOVE_DIR_INPLACE]->_players.end(); iter++)
+		{
+			if ((*iter) != this)
+			{
+				int dist = _x - (*iter)->_x;
+				if (dist >= 0 && dist <= dfATTACK2_RANGE_X &&
+					abs((*iter)->_y - _y) <= dfATTACK2_RANGE_Y)
+				{
+					pDamagedPlayer = (*iter);
+					pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
+
+					if (pDamagedPlayer->_hp <= 0)
+					{
+						//_deadCnt++;
+						pDamagedPlayer->GetSession()->SetSessionDead();
+					}
+					return;
+				}
+			}
+		}
+
+		if (_x <= pSector->_xPosMin + dfATTACK2_RANGE_X)
+		{
+			iter = pSector->_around[dfMOVE_DIR_LL]->_players.begin();
+			for (; iter < pSector->_around[dfMOVE_DIR_LL]->_players.end(); iter++)
+			{
+				int dist = _x - (*iter)->_x;
+				if (dist >= 0 && dist <= dfATTACK2_RANGE_X &&
+					abs((*iter)->_y - _y) <= dfATTACK2_RANGE_Y)
+				{
+					pDamagedPlayer = (*iter);
+					pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
+
+					if (pDamagedPlayer->_hp <= 0)
+					{
+						//_deadCnt++;
+						pDamagedPlayer->GetSession()->SetSessionDead();
+					}
+					return;
+				}
+			}
+
+			if (_y <= pSector->_yPosMin + dfATTACK2_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_LD]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_LD]->_players.end(); iter++)
+				{
+					int dist = _x - (*iter)->_x;
+					if (dist >= 0 && dist <= dfATTACK2_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK2_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+			else if (_y >= pSector->_yPosMax - dfATTACK2_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_LU]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_LU]->_players.end(); iter++)
+				{
+					int dist = _x - (*iter)->_x;
+					if (dist >= 0 && dist <= dfATTACK2_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK2_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+		}
+		else
+		{
+			if (_y <= pSector->_yPosMin + dfATTACK2_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_DD]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_DD]->_players.end(); iter++)
+				{
+					int dist = _x - (*iter)->_x;
+					if (dist >= 0 && dist <= dfATTACK2_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK2_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+			else if (_y >= pSector->_yPosMax - dfATTACK2_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_UU]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_UU]->_players.end(); iter++)
+				{
+					int dist = _x - (*iter)->_x;
+					if (dist >= 0 && dist <= dfATTACK2_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK2_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+		}
 	}
-	_packetBuffer.MoveWritePos(size);
-
-	_packetBuffer >> headDirection;
-	_packetBuffer >> X;
-	_packetBuffer >> Y;
-
-	if (abs(X - _x) > dfERROR_RANGE ||
-		abs(Y - _y) > dfERROR_RANGE)
+	else if (direction == dfMOVE_DIR_RR)
 	{
-		SetStateDead();
-		return;
+		vector<Player*>::iterator iter;
+		Sector* pSector = _pSector;
+
+		iter = pSector->_around[dfMOVE_DIR_INPLACE]->_players.begin();
+		for (; iter < pSector->_around[dfMOVE_DIR_INPLACE]->_players.end(); iter++)
+		{
+			if ((*iter) != this)
+			{
+				int dist = (*iter)->_x - _x;
+				if (dist >= 0 && dist <= dfATTACK2_RANGE_X &&
+					abs((*iter)->_y - _y) <= dfATTACK2_RANGE_Y)
+				{
+					pDamagedPlayer = (*iter);
+					pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
+
+					if (pDamagedPlayer->_hp <= 0)
+					{
+						//_deadCnt++;
+						pDamagedPlayer->GetSession()->SetSessionDead();
+					}
+					return;
+				}
+			}
+		}
+
+		if (_x >= pSector->_xPosMax - dfATTACK2_RANGE_X)
+		{
+			iter = pSector->_around[dfMOVE_DIR_RR]->_players.begin();
+			for (; iter < pSector->_around[dfMOVE_DIR_RR]->_players.end(); iter++)
+			{
+				int dist = (*iter)->_x - _x;
+				if (dist >= 0 && dist <= dfATTACK2_RANGE_X &&
+					abs((*iter)->_y - _y) <= dfATTACK2_RANGE_Y)
+				{
+					pDamagedPlayer = (*iter);
+					pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
+
+					if (pDamagedPlayer->_hp <= 0)
+					{
+						//_deadCnt++;
+						pDamagedPlayer->GetSession()->SetSessionDead();
+					}
+					return;
+				}
+			}
+
+			if (_y >= pSector->_yPosMax - dfATTACK2_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_RU]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_RU]->_players.end(); iter++)
+				{
+					int dist = (*iter)->_x - _x;
+					if (dist >= 0 && dist <= dfATTACK2_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK2_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+			else if (_y <= pSector->_yPosMin + dfATTACK2_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_RD]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_RD]->_players.end(); iter++)
+				{
+					int dist = (*iter)->_x - _x;
+					if (dist >= 0 && dist <= dfATTACK2_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK2_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+		}
+		else
+		{
+			if (_y >= pSector->_yPosMax - dfATTACK2_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_UU]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_UU]->_players.end(); iter++)
+				{
+					int dist = (*iter)->_x - _x;
+					if (dist >= 0 && dist <= dfATTACK2_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK2_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+			else if (_y <= pSector->_yPosMin + dfATTACK2_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_DD]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_DD]->_players.end(); iter++)
+				{
+					int dist = (*iter)->_x - _x;
+					if (dist >= 0 && dist <= dfATTACK2_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK2_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+		}
 	}
-
-	_headDirection = headDirection;
-	_x = X;
-	_y = Y;
-
-#ifdef RECV_PACKET_DEBUG
-	printf("===================================\n\
-%d: ATTACK 2\n\n\
-packetAttack2.headDirection: %d\n\
-packetAttack2.X: %d\n\
-packetAttack2.Y: %d\n\n\
-now X: %d\n\
-now Y: %d\n\
-====================================\n\n",
-_ID, headDirection, X, Y, _x, _y);
-#endif
-	SetPacketAttack2();
 }
-
-void Player::HandlePacketAttack3()
+void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x, short& y)
 {
-	char headDirection;
-	short X;
-	short Y;
+	_x = x;
+	_y = y;
+	_headDirection = direction;
 
-	int size = sizeof(headDirection) + sizeof(X) + sizeof(Y);
-	int dequeueRet = _pSession->_recvBuf.Dequeue(_packetBuffer.GetWritePtr(), size);
-	if (dequeueRet != size)
+	if (direction == dfMOVE_DIR_LL)
 	{
-		printf("Error! Func %s Line %d\n", __func__, __LINE__);
-		SetStateDead();
-		return;
+		vector<Player*>::iterator iter;
+		Sector* pSector = _pSector;
+
+		iter = pSector->_around[dfMOVE_DIR_INPLACE]->_players.begin();
+		for (; iter < pSector->_around[dfMOVE_DIR_INPLACE]->_players.end(); iter++)
+		{
+			if ((*iter) != this)
+			{
+				int dist = _x - (*iter)->_x;
+				if (dist >= 0 && dist <= dfATTACK3_RANGE_X &&
+					abs((*iter)->_y - _y) <= dfATTACK3_RANGE_Y)
+				{
+					pDamagedPlayer = (*iter);
+					pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
+
+					if (pDamagedPlayer->_hp <= 0)
+					{
+						//_deadCnt++;
+						pDamagedPlayer->GetSession()->SetSessionDead();
+					}
+					return;
+				}
+			}
+		}
+
+		if (_x <= pSector->_xPosMin + dfATTACK3_RANGE_X)
+		{
+			iter = pSector->_around[dfMOVE_DIR_LL]->_players.begin();
+			for (; iter < pSector->_around[dfMOVE_DIR_LL]->_players.end(); iter++)
+			{
+				int dist = _x - (*iter)->_x;
+				if (dist >= 0 && dist <= dfATTACK3_RANGE_X &&
+					abs((*iter)->_y - _y) <= dfATTACK3_RANGE_Y)
+				{
+					pDamagedPlayer = (*iter);
+					pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
+
+					if (pDamagedPlayer->_hp <= 0)
+					{
+						//_deadCnt++;
+						pDamagedPlayer->GetSession()->SetSessionDead();
+					}
+					return;
+				}
+			}
+
+			if (_y <= pSector->_yPosMin + dfATTACK3_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_LD]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_LD]->_players.end(); iter++)
+				{
+					int dist = _x - (*iter)->_x;
+					if (dist >= 0 && dist <= dfATTACK3_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK3_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+			else if (_y >= pSector->_yPosMax - dfATTACK3_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_LU]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_LU]->_players.end(); iter++)
+				{
+					int dist = _x - (*iter)->_x;
+					if (dist >= 0 && dist <= dfATTACK3_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK3_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+		}
+		else
+		{
+			if (_y <= pSector->_yPosMin + dfATTACK3_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_DD]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_DD]->_players.end(); iter++)
+				{
+					int dist = _x - (*iter)->_x;
+					if (dist >= 0 && dist <= dfATTACK3_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK3_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+			else if (_y >= pSector->_yPosMax - dfATTACK3_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_UU]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_UU]->_players.end(); iter++)
+				{
+					int dist = _x - (*iter)->_x;
+					if (dist >= 0 && dist <= dfATTACK3_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK3_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+		}
 	}
-	_packetBuffer.MoveWritePos(size);
-
-	_packetBuffer >> headDirection;
-	_packetBuffer >> X;
-	_packetBuffer >> Y;
-
-	if (abs(X - _x) > dfERROR_RANGE ||
-		abs(Y - _y) > dfERROR_RANGE)
+	else if (direction == dfMOVE_DIR_RR)
 	{
-		SetStateDead();
-		return;
+		vector<Player*>::iterator iter;
+		Sector* pSector = _pSector;
+
+		iter = pSector->_around[dfMOVE_DIR_INPLACE]->_players.begin();
+		for (; iter < pSector->_around[dfMOVE_DIR_INPLACE]->_players.end(); iter++)
+		{
+			if ((*iter) != this)
+			{
+				int dist = (*iter)->_x - _x;
+				if (dist >= 0 && dist <= dfATTACK3_RANGE_X &&
+					abs((*iter)->_y - _y) <= dfATTACK3_RANGE_Y)
+				{
+					pDamagedPlayer = (*iter);
+					pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
+
+					if (pDamagedPlayer->_hp <= 0)
+					{
+						//_deadCnt++;
+						pDamagedPlayer->GetSession()->SetSessionDead();
+					}
+					return;
+				}
+			}
+		}
+
+		if (_x >= pSector->_xPosMax - dfATTACK3_RANGE_X)
+		{
+			iter = pSector->_around[dfMOVE_DIR_RR]->_players.begin();
+			for (; iter < pSector->_around[dfMOVE_DIR_RR]->_players.end(); iter++)
+			{
+				int dist = (*iter)->_x - _x;
+				if (dist >= 0 && dist <= dfATTACK3_RANGE_X &&
+					abs((*iter)->_y - _y) <= dfATTACK3_RANGE_Y)
+				{
+					pDamagedPlayer = (*iter);
+					pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
+
+					if (pDamagedPlayer->_hp <= 0)
+					{
+						//_deadCnt++;
+						pDamagedPlayer->GetSession()->SetSessionDead();
+					}
+					return;
+				}
+			}
+
+			if (_y >= pSector->_yPosMax - dfATTACK3_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_RU]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_RU]->_players.end(); iter++)
+				{
+					int dist = (*iter)->_x - _x;
+					if (dist >= 0 && dist <= dfATTACK3_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK3_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+			else if (_y <= pSector->_yPosMin + dfATTACK3_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_RD]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_RD]->_players.end(); iter++)
+				{
+					int dist = (*iter)->_x - _x;
+					if (dist >= 0 && dist <= dfATTACK3_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK3_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+		}
+		else
+		{
+			if (_y >= pSector->_yPosMax - dfATTACK3_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_UU]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_UU]->_players.end(); iter++)
+				{
+					int dist = (*iter)->_x - _x;
+					if (dist >= 0 && dist <= dfATTACK3_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK3_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+			else if (_y <= pSector->_yPosMin + dfATTACK3_RANGE_Y)
+			{
+				iter = pSector->_around[dfMOVE_DIR_DD]->_players.begin();
+				for (; iter < pSector->_around[dfMOVE_DIR_DD]->_players.end(); iter++)
+				{
+					int dist = (*iter)->_x - _x;
+					if (dist >= 0 && dist <= dfATTACK3_RANGE_X &&
+						abs((*iter)->_y - _y) <= dfATTACK3_RANGE_Y)
+					{
+						pDamagedPlayer = (*iter);
+						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
+
+						if (pDamagedPlayer->_hp <= 0)
+						{
+							//_deadCnt++;
+							pDamagedPlayer->GetSession()->SetSessionDead();
+						}
+						return;
+					}
+				}
+			}
+		}
 	}
-
-	_headDirection = headDirection;
-	_x = X;
-	_y = Y;
-#ifdef RECV_PACKET_DEBUG
-	printf("===================================\n\
-%d: ATTACK 3\n\n\
-packetAttack3.headDirection: %d\n\
-packetAttack3.X: %d\n\
-packetAttack3.Y: %d\n\n\
-now X: %d\n\
-now Y: %d\n\
-====================================\n\n",
-_ID, headDirection, X, Y, _x, _y);
-#endif
-
-	SetPacketAttack3();
 }

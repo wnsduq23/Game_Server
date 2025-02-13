@@ -1,16 +1,10 @@
 #pragma once
 
-#include "RingBuffer.h"
-#include <WinSock2.h>
-#include <WS2tcpip.h>
-#include <list>
-#pragma comment(lib, "ws2_32")
+#include "Session.h"
+#include "Player.h"
+#include "Protocol.h"
+#include "ObjectPool.h"
 
-/*========================
-*		DEFINE
-========================*/
-#define IP L"0.0.0.0"
-#define PORT 5000
 
 /*========================
 *		FUNCTION
@@ -20,64 +14,61 @@
 /*========================
 *		CLASS
 ========================*/
+
 class Player;
-class NetworkManager;
-class PlayerManager;
-
-class Session
-{
-	friend NetworkManager;
-	friend PlayerManager;
-	friend Player;
-private:
-	void SetSessionAlive() { _bAlive = true; }
-	void SetSessionDead() { _bAlive = false; }
-	bool GetSessionAlive() { return _bAlive; }
-private:
-	bool		_bAlive;
-	SOCKET		_sock;
-	RingBuffer	_sendBuf;
-	RingBuffer	_recvBuf;
-};
-
 
 class NetworkManager
 {
 private:
 	NetworkManager();
 	~NetworkManager();
-	static NetworkManager*	_NetworkMgr;
 	std::list<Session*>		_sessionList;
-	SOCKET					_listensock;
+	SOCKET					_listensock = INVALID_SOCKET;
 	FD_SET					_rset;
 	FD_SET					_wset;
 public:
 	// 복사 및 할당 방지
 	NetworkManager(const NetworkManager&) = delete;
 	NetworkManager& operator=(const NetworkManager&) = delete;
+private:
+	ObjectPool<Session>* _pSessionPool;
+	Session* _Sessions[dfSESSION_MAX];  // Use Session ID for Index
+	Session* _rSessions[dfSESSION_MAX];
+	Session* _wSessions[dfSESSION_MAX];
 public:
 	/*========================
 	*	CLASS FUNCTION
 	========================*/
-	void NetworkInitialize();
-	void SelectModel();
 	//싱글톤 인스턴스 접근
-	static NetworkManager* GetInstance()
+	static NetworkManager& GetInstance()
 	{
-		if (_NetworkMgr == nullptr)
-		{
-			_NetworkMgr = new NetworkManager();
-		}
+		static NetworkManager _NetworkMgr;
 		return _NetworkMgr;
 	}
-	void EnqSendBufUnicast(char* msg, int msgSize, Session* pSession);
-	void EnqSendBufBroadcast(char* msg, int msgSize, Session* pExpSession = nullptr);
-	void Terminate();
+	bool HandleCSPackets(Player* pPlayer, UINT8 action_type);
+	bool HandleCSPacket_MoveStart(Player* pPlayer);
+	bool HandleCSPacket_MoveStop(Player* pPlayer);
+	bool HandleCSPacket_Attack1(Player* pPlayer);
+	bool HandleCSPacket_Attack2(Player* pPlayer);
+	bool HandleCSPacket_Attack3(Player* pPlayer);
+	bool HandleCSPacket_ECHO(Player* pPlayer);
+	void EnqMsgUnicast(char* msg, int msgSize, Session* pSession);
 
+	bool GetCSPacket_ECHO(SerializePacket* pPacket, RingBuffer* recvRBuffer, int& time);
+	void SelectModel(int rStarIdx, int rCount, int wStartIdx, int wCount);
+	void NetworkUpdate();
 private:
 	void AcceptProc();
 	void RecvProc(Session* session);
 	void SendProc(Session* session);
+
+// session 관련
+	int _sessionIDs = 0;
+	int _usableCnt = 0;
+	int _usableSessionID[dfSESSION_MAX];
 	void DisconnectDeadSessions();
+public:
+	int _disconnectCnt = 0;
+	int _disconnectSessionIDs[dfSESSION_MAX];
 };
 

@@ -1,8 +1,8 @@
 #include "RingBuffer.h"
 #include <iostream>
 
-//#define RINGBUFFER_DEBUG
-//#define ENQ_DEQ_DEBUG
+#define RINGBUFFER_DEBUG
+#define ENQ_DEQ_DEBUG
 
 RingBuffer::RingBuffer(void) : _iBufferSize(DEFAULT_BUF_SIZE), _iFreeSize(DEFAULT_BUF_SIZE - 1)
 {
@@ -140,7 +140,8 @@ int RingBuffer::Enqueue(char* chpData, int iSize)
         }
     }
 
-    if (iSize <= DirectEnqueueSize())
+    int directEnqueueSize = DirectEnqueueSize();
+    if (iSize <= directEnqueueSize)
     {
         memcpy_s(&_chpBuffer[(_iWritePos + 1) % _iBufferSize], iSize, chpData, iSize);
 
@@ -167,7 +168,7 @@ int RingBuffer::Enqueue(char* chpData, int iSize)
     }
     else
     {
-        int size1 = DirectEnqueueSize();
+        int size1 = directEnqueueSize;
         int size2 = iSize - size1;
         memcpy_s(&_chpBuffer[(_iWritePos + 1) % _iBufferSize], size1, chpData, size1);
         memcpy_s(_chpBuffer, size2, &chpData[size1], size2);
@@ -232,7 +233,8 @@ int RingBuffer::Dequeue(char* chpData, int iSize)
         return -1;
     }
 
-    if (iSize <= DirectDequeueSize())
+    int directDequeueSize = DirectDequeueSize();
+    if (iSize <= directDequeueSize)
     {
         memcpy_s(chpData, iSize, &_chpBuffer[(_iReadPos + 1) % _iBufferSize], iSize);
 
@@ -251,7 +253,7 @@ int RingBuffer::Dequeue(char* chpData, int iSize)
     }
     else
     {
-        int size1 = DirectDequeueSize();
+        int size1 = directDequeueSize;
         int size2 = iSize - size1;
         memcpy_s(chpData, size1, &_chpBuffer[(_iReadPos + 1) % _iBufferSize], size1);
         memcpy_s(&chpData[size1], size2, _chpBuffer, size2);
@@ -308,13 +310,14 @@ int RingBuffer::Peek(char* chpDest, int iSize)
         return -1;
     }
 
-    if (iSize <= DirectDequeueSize())
+    int directDequeueSize = DirectDequeueSize();
+    if (iSize <= directDequeueSize)
     {
         memcpy_s(chpDest, iSize, &_chpBuffer[(_iReadPos + 1) % _iBufferSize], iSize);
     }
     else
     {
-        int size1 = DirectDequeueSize();
+        int size1 = directDequeueSize;
         int size2 = iSize - size1;
         memcpy_s(chpDest, size1, &_chpBuffer[(_iReadPos + 1) % _iBufferSize], size1);
         memcpy_s(&chpDest[size1], size2, _chpBuffer, size2);
@@ -348,17 +351,18 @@ bool RingBuffer::Resize(int iSize)
     }
 
     char* newBuffer = new char[iSize]();
+    memset(newBuffer, '\0', iSize);
 
     if (_iWritePos > _iReadPos)
     {
-        memcpy_s(newBuffer, iSize, &_chpBuffer[(_iReadPos + 1) % _iBufferSize], _iUsedSize);
+        memcpy_s(&newBuffer[1], iSize - 1, &_chpBuffer[(_iReadPos + 1) % _iBufferSize], _iUsedSize);
     }
-    else if (_iWritePos < _iReadPos)
+    else if (_iWritePos <= _iReadPos)
     {
         int size1 = _iBufferSize - _iReadPos - 1;
         int size2 = _iWritePos + 1;
-        memcpy_s(newBuffer, iSize, &_chpBuffer[(_iReadPos + 1) % _iBufferSize], size1);
-        memcpy_s(&newBuffer[size1], iSize - size1, _chpBuffer, size2);
+        memcpy_s(&newBuffer[1], iSize - 1, &_chpBuffer[(_iReadPos + 1) % _iBufferSize], size1);
+        memcpy_s(&newBuffer[size1 + 1], iSize - (size1 + 1), &_chpBuffer[0], size2);
     }
 
     delete[] _chpBuffer;
@@ -439,30 +443,6 @@ int RingBuffer::MoveWritePos(int iSize)
     }
 #endif
     return iSize;
-}
-
-char* RingBuffer::GetReadBufferPtr(void)
-{
-#ifdef RINGBUFFER_DEBUG
-    if (GetUseSize() < 0 || GetFreeSize() < 0)
-    {
-        printf("Error! Func %s Function %s Line %d\n", __func__, __func__, __LINE__);
-        return nullptr;
-    }
-#endif
-    return &_chpBuffer[_iReadPos + 1];
-}
-
-char* RingBuffer::GetWriteBufferPtr(void)
-{
-#ifdef RINGBUFFER_DEBUG
-    if (GetUseSize() < 0 || GetFreeSize() < 0)
-    {
-        printf("Error! Func %s Function %s Line %d\n", __func__, __func__, __LINE__);
-        return nullptr;
-    }
-#endif
-    return &_chpBuffer[_iWritePos + 1];
 }
 
 void RingBuffer::GetBufferDataForDebug()

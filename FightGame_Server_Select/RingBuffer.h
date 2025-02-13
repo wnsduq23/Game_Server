@@ -1,6 +1,6 @@
 #pragma once
-#define DEFAULT_BUF_SIZE (2048 + 1)
-#define MAX_BUF_SIZE (8192 + 1) 
+#define DEFAULT_BUF_SIZE (32767 + 1)
+#define MAX_BUF_SIZE (65535 + 1)
 
 /*====================================================================
 
@@ -33,8 +33,8 @@ public:
 
     int MoveReadPos(int iSize);
     int MoveWritePos(int iSize);
-    char* GetReadBufferPtr(void);
-    char* GetWriteBufferPtr(void);
+    char* GetReadPtr(void) { return &_chpBuffer[(_iReadPos + 1) % _iBufferSize]; }
+    char* GetWritePtr(void) { return &_chpBuffer[(_iWritePos + 1) % _iBufferSize]; }
 
     // For Debug
     void GetBufferDataForDebug();
