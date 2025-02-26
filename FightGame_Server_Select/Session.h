@@ -23,7 +23,7 @@ public:
 		_sendRingBuf.ClearBuffer();
 	}
 public:
-	UINT32		_ID;
+	int		_ID;
 	bool		_bAlive;
 	SOCKET		_socket;
 	SOCKADDR_IN	_addr;

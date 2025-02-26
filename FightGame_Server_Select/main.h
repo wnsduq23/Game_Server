@@ -1,3 +1,3 @@
 #pragma once
-
-extern bool g_bShutdown;
+#include "CrashDump.h"
+extern CrashDump g_dump;

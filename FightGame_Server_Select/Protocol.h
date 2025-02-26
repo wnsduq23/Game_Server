@@ -6,8 +6,7 @@
 //-----------------------------------------------------------------
 
 #define IP L"0.0.0.0"
-#define PORT 5000
-//#define dfNETWORK_PORT					11650
+#define dfNETWORK_PORT					5000
 #define dfMONITOR_CHECKPOINT			11
 
 #define dfSESSION_MAX					9000
@@ -37,9 +36,9 @@
 
 struct stPACKET_HEADER
 {
-	UINT8	code = dfPACKET_HEADER_CODE;
-	UINT8	payload_size;
-	UINT8	action_type;
+	BYTE	code = dfPACKET_HEADER_CODE;
+	BYTE	payload_size;
+	BYTE	action_type;
 };
 
 #define	dfPACKET_SC_CREATE_MY_CHARACTER			0

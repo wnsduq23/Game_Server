@@ -10,17 +10,6 @@
 /*========================
 *		DEFINE
 ========================*/
-# define PACKET_DEBUG
-
-// ATTACK TYPE Define
-#define dfATTACK_TYPE_ATTACK1	1
-#define dfATTACK_TYPE_ATTACK2	2
-#define dfATTACK_TYPE_ATTACK3	3
-
-// Init Setting
-#define dfINIT_X (dfRANGE_MOVE_RIGHT - dfRANGE_MOVE_LEFT) / 2
-#define dfINIT_Y (dfRANGE_MOVE_BOTTOM - dfRANGE_MOVE_TOP) / 2
-#define dfMAX_HP 100
 
 
 /*========================
@@ -47,23 +36,22 @@ private:
 	Sector* _pSector;
 private:
 	int		_ID;
-	char		_headDirection;
-	char		_moveDirection;
+	BYTE		_headDirection;
+	BYTE		_moveDirection;
 	short		_x;
 	short		_y;
-	char		_hp;
-	char		_packet;
+	BYTE		_hp;
 	BOOL		_bMove;
 
 public:
 	Session* GetSession() { return _pSession; }
 	Sector* GetSector() { return _pSector; }
 	int		GetID() { return _ID; }
-	char		GetMoveDirection() { return _moveDirection; }
-	char		GetHeadDirection() { return _headDirection; }
+	BYTE		GetMoveDirection() { return _moveDirection; }
+	BYTE		GetHeadDirection() { return _headDirection; }
 	short		GetX() { return _x; }
 	short		GetY() { return _y; }
-	char		GetHp() { return _hp; }
+	BYTE		GetHp() { return _hp; }
 	bool		GetStateMoving() { return _bMove; }
 	void		SetSector(Sector* pSector) { _pSector = pSector; }
 	
@@ -72,11 +60,14 @@ public:
 	========================*/
 public:
 	// Set Game Data from Packet Data
-	void SetPlayerMoveStart(char& moveDirection, short& x, short& y);
-	void SetPlayerMoveStop(char& direction, short& x, short& y);
-	void SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x, short& y);
-	void SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x, short& y);
-	void SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x, short& y);
+	void SetPlayerMoveStart(BYTE& moveDirection, short& x, short& y);
+	void SetPlayerMoveStop(BYTE& direction, short& x, short& y);
+	void SetPlayerAttack1(Player*& pDamagedPlayer, BYTE& direction, short& x, short& y);
+	void SetPlayerAttack2(Player*& pDamagedPlayer, BYTE& direction, short& x, short& y);
+	void SetPlayerAttack3(Player*& pDamagedPlayer, BYTE& direction, short& x, short& y);
+
+	void UpdateSector(Player* pPlayer, short Direction);
+	inline void SetPlayerSector(Player* pPlayer);
 public:
 	void MoveUpdate();
 private:

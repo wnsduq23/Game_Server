@@ -28,7 +28,7 @@ public:
 	/*========================
 	*		FUNCTION
 	========================*/
-	bool SkipForFixedFrame(void);
+	inline bool SkipForFixedFrame(void);
 	void GameContentsModule();
 
 // Sector 관련
@@ -41,17 +41,17 @@ private:
 	  dfVERT_SECTOR_NUM, dfDIAG_SECTOR_NUM };
 
 public:
-	void UpdateSector(Player* pPlayer, UINT16 Direction);
-	void SetPlayerSector(Player* pPlayer);
-	void SetSectorsAroundInfo();
-	void EnqMsgOneSector(char* msg, int size, Sector* sector, Session* pExpSession = nullptr);
-	void EnqMsgAroundSector(char* msg, int size, Sector* centerSector, Session* pExpSession = nullptr);
+	void UpdateSector(Player* pPlayer, short Direction);
+	inline void SetPlayerSector(Player* pPlayer);
+	inline void SetSectorsAroundInfo();
+	inline void SendPacketOneSector(char* msg, int size, Sector* sector, Session* pExpSession = nullptr);
+	void SendPacketAroundSector(char* msg, int size, Sector* centerSector, Session* pExpSession = nullptr);
 
 // Player 관련
-	UINT32 _playerID = 0;
+	int _playerID = 0;
 	Player* _Players[dfSESSION_MAX]; // Use Session ID for Index
 public:
 	void CreatePlayer(Session* newSession);
 private:
-	void PlayerActionProc();
+	inline void PlayerActionProc();
 };

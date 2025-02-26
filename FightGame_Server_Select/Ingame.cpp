@@ -2,6 +2,7 @@
 #include "Sector.h"
 #include <Windows.h>
 #include "SetSCPacket.h"
+#include "main.h"
 
 
 IngameManager::IngameManager()
@@ -180,7 +181,7 @@ void IngameManager::SetSectorsAroundInfo()
 	}
 }
 
-void IngameManager::UpdateSector(Player* pPlayer, UINT16 direction)
+void IngameManager::UpdateSector(Player* pPlayer, short direction)
 {
 	//PRO_BEGIN(L"Content: Update Sector");
 
@@ -208,20 +209,20 @@ void IngameManager::UpdateSector(Player* pPlayer, UINT16 direction)
 		pPlayer->GetID(), pPlayer->GetHeadDirection(), pPlayer->GetX(), pPlayer->GetY(), pPlayer->GetHp());
 	//새로 변경된 섹터 안에 있는 플레이어들에게 내 정보 send
 	for (int i = 0; i < updated_sector_cnt; i++)
-		EnqMsgOneSector(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), createMeToOtherRet, new_updated_sector[i]);
+		SendPacketOneSector(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), createMeToOtherRet, new_updated_sector[i]);
 
 	// 섹터 안으로 들어오는 동작 send
 	pPlayer->GetSession()->_sendSerialPacket.Clear();
 	int moveMeToOtherRet = SetSCPacket_MOVE_START(&pPlayer->GetSession()->_sendSerialPacket,
 		pPlayer->GetID(), pPlayer->GetMoveDirection(), pPlayer->GetX(), pPlayer->GetY());
 	for (int i = 0; i < updated_sector_cnt; i++)
-		EnqMsgOneSector(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), moveMeToOtherRet, new_updated_sector[i]);
+		SendPacketOneSector(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), moveMeToOtherRet, new_updated_sector[i]);
 
 	// 이동 후 old sector에 있는 플레이어들에게 내 정보 삭제 send
 	pPlayer->GetSession()->_sendSerialPacket.Clear();
 	int deleteMeToOtherRet = SetSCPacket_DELETE_CHARACTER(&pPlayer->GetSession()->_sendSerialPacket, pPlayer->GetID());
 	for (int i = 0; i < updated_sector_cnt; i++)
-		EnqMsgOneSector(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), deleteMeToOtherRet, old_updated_sector[i]);
+		SendPacketOneSector(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), deleteMeToOtherRet, old_updated_sector[i]);
 
 	// Send Data About Other Player to My Player ==============================================
 
@@ -233,14 +234,14 @@ void IngameManager::UpdateSector(Player* pPlayer, UINT16 direction)
 			pPlayer->GetSession()->_sendSerialPacket.Clear();
 			int createOtherRet = SetSCPacket_CREATE_OTHER_CHARACTER(&pPlayer->GetSession()->_sendSerialPacket,
 				(*iter)->GetID(), (*iter)->GetHeadDirection(), (*iter)->GetX(), (*iter)->GetY(), (*iter)->GetHp());
-			NetworkManager::GetInstance().EnqMsgUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), createOtherRet, pPlayer->GetSession());
+			NetworkManager::GetInstance().SendPacketUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), createOtherRet, pPlayer->GetSession());
 
 			if ((*iter)->GetStateMoving()) // check
 			{
 				pPlayer->GetSession()->_sendSerialPacket.Clear();
 				int MoveOtherRet = SetSCPacket_MOVE_START(&pPlayer->GetSession()->_sendSerialPacket,
 					(*iter)->GetID(), (*iter)->GetMoveDirection(), (*iter)->GetX(), (*iter)->GetY());
-				NetworkManager::GetInstance().EnqMsgUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), MoveOtherRet, pPlayer->GetSession());
+				NetworkManager::GetInstance().SendPacketUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), MoveOtherRet, pPlayer->GetSession());
 			}
 		}
 	}
@@ -252,7 +253,7 @@ void IngameManager::UpdateSector(Player* pPlayer, UINT16 direction)
 		{
 			pPlayer->GetSession()->_sendSerialPacket.Clear();
 			int deleteOtherRet = SetSCPacket_DELETE_CHARACTER(&pPlayer->GetSession()->_sendSerialPacket, (*iter)->GetID());
-			NetworkManager::GetInstance().EnqMsgUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), deleteOtherRet, pPlayer->GetSession());
+			NetworkManager::GetInstance().SendPacketUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), deleteOtherRet, pPlayer->GetSession());
 		}
 	}
 
@@ -263,7 +264,7 @@ void IngameManager::UpdateSector(Player* pPlayer, UINT16 direction)
 }
 
 // 한 섹터 안에 있는 모든 플레이어들에게 메시지 링버퍼에 넣음
-void IngameManager::EnqMsgOneSector(char* msg, int size, Sector* sector, Session* pExpSession)
+void IngameManager::SendPacketOneSector(char* msg, int size, Sector* sector, Session* pExpSession)
 {
 	if (pExpSession == nullptr)
 	{
@@ -272,27 +273,27 @@ void IngameManager::EnqMsgOneSector(char* msg, int size, Sector* sector, Session
 		{
 			if ((*playerIter) == nullptr)
 			{
-				/*LOG(L"FightGame", CSystemLog::ERROR_LEVEL,
+				LOG(L"FightGame", SystemLog::ERROR_LEVEL,
 					L"%s[%d] Player in sector[%d][%d] is nullptr\n", 
-					_T(__FUNCTION__), __LINE__, sector->GetX()Index, sector->GetY()Index);
+					_T(__FUNCTION__), __LINE__, sector->_xIndex, sector->_yIndex);
 					
 				::wprintf(L"%s[%d] Player in sector[%d][%d] is nullptr\n",
-					_T(__FUNCTION__), __LINE__, sector->GetX()Index, sector->GetY()Index);
-				dump.Crash();*/
+					_T(__FUNCTION__), __LINE__, sector->_xIndex, sector->_yIndex);
+				g_dump.Crash();
 				return;
 			}
 
 			int enqueueRet = (*playerIter)->GetSession()->_sendRingBuf.Enqueue(msg, size);
 			if (enqueueRet != size)
 			{
-				 /*LOG(L"FightGame", CSystemLog::ERROR_LEVEL,
+				 LOG(L"FightGame", SystemLog::ERROR_LEVEL,
 					L"%s[%d] Session %d - sendRBuf Enqueue Error (req - %d, ret - %d)\n",
-					_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->GetID(), size, enqueueRet);
+					_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->_ID, size, enqueueRet);
 
 				::wprintf(L"%s[%d] Session %d - sendRBuf Enqueue Error (req - %d, ret - %d)\n",
-					_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->GetID(), size, enqueueRet);
+					_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->_ID, size, enqueueRet);
 
-				dump.Crash();*/
+				g_dump.Crash();
 				return;
 			}
 		}
@@ -306,28 +307,28 @@ void IngameManager::EnqMsgOneSector(char* msg, int size, Sector* sector, Session
 			{
 				if ((*playerIter) == nullptr)
 				{
-					 /*LOG(L"FightGame", CSystemLog::ERROR_LEVEL,
+					 LOG(L"FightGame", SystemLog::ERROR_LEVEL,
 						L"%s[%d] Player in sector[%d][%d] is nullptr\n",
-						_T(__FUNCTION__), __LINE__, sector->GetX()Index, sector->GetY()Index);
+						_T(__FUNCTION__), __LINE__, sector->_xIndex, sector->_yIndex);
 
 					::wprintf(L"%s[%d] Player in sector[%d][%d] is nullptr\n",
-						_T(__FUNCTION__), __LINE__, sector->GetX()Index, sector->GetY()Index);
+						_T(__FUNCTION__), __LINE__, sector->_xIndex, sector->_yIndex);
 
-					dump.Crash();*/
+					g_dump.Crash();
 					return;
 				}
 
 				int enqueueRet = (*playerIter)->GetSession()->_sendRingBuf.Enqueue(msg, size);
 				if (enqueueRet != size)
 				{
-					 /*LOG(L"FightGame", CSystemLog::ERROR_LEVEL,
+					 LOG(L"FightGame", SystemLog::ERROR_LEVEL,
 						L"%s[%d] Session %d - sendRBuf Enqueue Error (req - %d, ret - %d)\n",
-						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->GetID(), size, enqueueRet);
+						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->_ID, size, enqueueRet);
 
 					::wprintf(L"%s[%d] Session %d - sendRBuf Enqueue Error (req - %d, ret - %d)\n",
-						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->GetID(), size, enqueueRet);
+						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->_ID, size, enqueueRet);
 
-					dump.Crash();*/
+					g_dump.Crash();
 					return;
 				}
 			}
@@ -336,7 +337,7 @@ void IngameManager::EnqMsgOneSector(char* msg, int size, Sector* sector, Session
 
 }
 
-void IngameManager::EnqMsgAroundSector(char* msg, int size, Sector* centerSector, Session* pExpSession)
+void IngameManager::SendPacketAroundSector(char* msg, int size, Sector* centerSector, Session* pExpSession)
 {
 	if (pExpSession == nullptr)
 	{
@@ -349,32 +350,32 @@ void IngameManager::EnqMsgAroundSector(char* msg, int size, Sector* centerSector
 			{
 				if ((*playerIter) == nullptr)
 				{
-					 /*LOG(L"FightGame", CSystemLog::ERROR_LEVEL,
+					 LOG(L"FightGame", SystemLog::ERROR_LEVEL,
 						L"%s[%d] Player in sector[%d][%d] is nullptr\n",
 						_T(__FUNCTION__), __LINE__, 
-						centerSector->_around[i]->GetX()Index, 
-						centerSector->_around[i]->GetY()Index);
+						centerSector->_around[i]->_xIndex, 
+						centerSector->_around[i]->_yIndex);
 
 					::wprintf(L"%s[%d] Player in sector[%d][%d] is nullptr\n",
 						_T(__FUNCTION__), __LINE__, 
-						centerSector->_around[i]->GetX()Index, 
-						centerSector->_around[i]->GetY()Index);
+						centerSector->_around[i]->_xIndex, 
+						centerSector->_around[i]->_yIndex);
 
-					dump.Crash();*/
+					g_dump.Crash();
 					return;
 				}
 
 				int enqueueRet = (*playerIter)->GetSession()->_sendRingBuf.Enqueue(msg, size);
 				if (enqueueRet != size)
 				{
-					 /*LOG(L"FightGame", CSystemLog::ERROR_LEVEL,
+					 LOG(L"FightGame", SystemLog::ERROR_LEVEL,
 						L"%s[%d] Session %d - sendRBuf Enqueue Error (req - %d, ret - %d)\n",
-						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->GetID(), size, enqueueRet);
+						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->_ID, size, enqueueRet);
 
 					::wprintf(L"%s[%d] Session %d - sendRBuf Enqueue Error (req - %d, ret - %d)\n",
-						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->GetID(), size, enqueueRet);
+						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->_ID, size, enqueueRet);
 
-					dump.Crash();*/
+					g_dump.Crash();
 					return;
 				}
 			}
@@ -391,32 +392,32 @@ void IngameManager::EnqMsgAroundSector(char* msg, int size, Sector* centerSector
 			{
 				if ((*playerIter) == nullptr)
 				{
-					 /*LOG(L"FightGame", CSystemLog::ERROR_LEVEL,
+					 LOG(L"FightGame", SystemLog::ERROR_LEVEL,
 						L"%s[%d] Player in sector[%d][%d] is nullptr\n",
 						_T(__FUNCTION__), __LINE__,
-						centerSector->_around[i]->GetX()Index,
-						centerSector->_around[i]->GetY()Index);
+						centerSector->_around[i]->_xIndex,
+						centerSector->_around[i]->_yIndex);
 
 					::wprintf(L"%s[%d] Player in sector[%d][%d] is nullptr\n",
 						_T(__FUNCTION__), __LINE__,
-						centerSector->_around[i]->GetX()Index,
-						centerSector->_around[i]->GetY()Index);
+						centerSector->_around[i]->_xIndex,
+						centerSector->_around[i]->_yIndex);
 
-					dump.Crash();*/
+					g_dump.Crash();
 					return;
 				}
 
 				int enqueueRet = (*playerIter)->GetSession()->_sendRingBuf.Enqueue(msg, size);
 				if (enqueueRet != size)
 				{
-					 /*LOG(L"FightGame", CSystemLog::ERROR_LEVEL,
+					 LOG(L"FightGame", SystemLog::ERROR_LEVEL,
 						L"%s[%d] Session %d - sendRBuf Enqueue Error (req - %d, ret - %d)\n",
-						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->GetID(), size, enqueueRet);
+						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->_ID, size, enqueueRet);
 
 					::wprintf(L"%s[%d] Session %d - sendRBuf Enqueue Error (req - %d, ret - %d)\n",
-						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->GetID(), size, enqueueRet);
+						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->_ID, size, enqueueRet);
 
-					dump.Crash();*/
+					g_dump.Crash();
 					return;
 				}
 			}
@@ -430,32 +431,32 @@ void IngameManager::EnqMsgAroundSector(char* msg, int size, Sector* centerSector
 			{
 				if ((*playerIter) == nullptr)
 				{
-					 /*LOG(L"FightGame", CSystemLog::ERROR_LEVEL,
+					 LOG(L"FightGame", SystemLog::ERROR_LEVEL,
 						L"%s[%d] Player in sector[%d][%d] is nullptr\n",
 						_T(__FUNCTION__), __LINE__,
-						centerSector->_around[dfMOVE_DIR_INPLACE]->GetX()Index,
-						centerSector->_around[dfMOVE_DIR_INPLACE]->GetY()Index);
+						centerSector->_around[dfMOVE_DIR_INPLACE]->_xIndex,
+						centerSector->_around[dfMOVE_DIR_INPLACE]->_yIndex);
 
 					::wprintf(L"%s[%d] Player in sector[%d][%d] is nullptr\n",
 						_T(__FUNCTION__), __LINE__,
-						centerSector->_around[dfMOVE_DIR_INPLACE]->GetX()Index,
-						centerSector->_around[dfMOVE_DIR_INPLACE]->GetY()Index);
+						centerSector->_around[dfMOVE_DIR_INPLACE]->_xIndex,
+						centerSector->_around[dfMOVE_DIR_INPLACE]->_yIndex);
 
-					dump.Crash();*/
+					g_dump.Crash();
 					return;
 				}
 
 				int enqueueRet = (*playerIter)->GetSession()->_sendRingBuf.Enqueue(msg, size);
 				if (enqueueRet != size)
 				{
-					 /*LOG(L"FightGame", CSystemLog::ERROR_LEVEL,
+					 LOG(L"FightGame", SystemLog::ERROR_LEVEL,
 						L"%s[%d] Session %d - sendRBuf Enqueue Error (req - %d, ret - %d)\n",
-						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->GetID(), size, enqueueRet);
+						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->_ID, size, enqueueRet);
 
 					::wprintf(L"%s[%d] Session %d - sendRBuf Enqueue Error (req - %d, ret - %d)\n",
-						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->GetID(), size, enqueueRet);
+						_T(__FUNCTION__), __LINE__, (*playerIter)->GetSession()->_ID, size, enqueueRet);
 
-					dump.Crash();*/
+					g_dump.Crash();
 					return;
 				}
 			}
@@ -475,7 +476,7 @@ void IngameManager::PlayerActionProc()
 
 		if (GetTickCount64() -_Players[i]->GetSession()->_lastRecvTime
 				> dfNETWORK_PACKET_RECV_TIMEOUT)
-		{
+		{ 
 			_Players[i]->GetSession()->SetSessionDead();
 			continue;
 		}
@@ -496,13 +497,13 @@ void IngameManager::CreatePlayer(Session* pSession)
 	pPlayer->GetSession()->_sendSerialPacket.Clear();
 	int createMeRet = SetSCPacket_CREATE_MY_CHARACTER(&pPlayer->GetSession()->_sendSerialPacket,
 		pPlayer->GetID(), pPlayer->GetHeadDirection(), pPlayer->GetX(), pPlayer->GetY(), pPlayer->GetHp());
-	NetworkManager::GetInstance().EnqMsgUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), createMeRet, pPlayer->GetSession());
+	NetworkManager::GetInstance().SendPacketUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), createMeRet, pPlayer->GetSession());
 
 	// Send <Create New Player Message> to All Player
 	pPlayer->GetSession()->_sendSerialPacket.Clear();
 	int createMeToOtherRet = SetSCPacket_CREATE_OTHER_CHARACTER(&pPlayer->GetSession()->_sendSerialPacket,
 		pPlayer->GetID(), pPlayer->GetHeadDirection(), pPlayer->GetX(), pPlayer->GetY(), pPlayer->GetHp());
-	EnqMsgAroundSector(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(),
+	SendPacketAroundSector(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(),
 		createMeToOtherRet, pPlayer->GetSector(), pPlayer->GetSession());
 
 	// Send <Create All Players Message> to New Player
@@ -515,14 +516,14 @@ void IngameManager::CreatePlayer(Session* pSession)
 			pPlayer->GetSession()->_sendSerialPacket.Clear();
 			int createOtherRet = SetSCPacket_CREATE_OTHER_CHARACTER(&pPlayer->GetSession()->_sendSerialPacket,
 				(*iter)->GetID(), (*iter)->GetHeadDirection(), (*iter)->GetX(), (*iter)->GetY(), (*iter)->GetHp());
-			NetworkManager::GetInstance().EnqMsgUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), createOtherRet, pPlayer->GetSession());
+			NetworkManager::GetInstance().SendPacketUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), createOtherRet, pPlayer->GetSession());
 
 			if((*iter)->GetStateMoving())
 			{
 				pPlayer->GetSession()->_sendSerialPacket.Clear();
 				int moveRet = SetSCPacket_MOVE_START(&pPlayer->GetSession()->_sendSerialPacket,
 					(*iter)->GetID(), (*iter)->GetMoveDirection(), (*iter)->GetX(), (*iter)->GetY());
-				NetworkManager::GetInstance().EnqMsgUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), moveRet, pPlayer->GetSession());
+				NetworkManager::GetInstance().SendPacketUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), moveRet, pPlayer->GetSession());
 			}
 		}
 	}
@@ -536,14 +537,14 @@ void IngameManager::CreatePlayer(Session* pSession)
 			pPlayer->GetSession()->_sendSerialPacket.Clear();
 			int createOtherRet = SetSCPacket_CREATE_OTHER_CHARACTER(&pPlayer->GetSession()->_sendSerialPacket,
 				(*iter)->GetID(), (*iter)->GetHeadDirection(), (*iter)->GetX(), (*iter)->GetY(), (*iter)->GetHp());
-			NetworkManager::GetInstance().EnqMsgUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), createOtherRet, pPlayer->GetSession());
+			NetworkManager::GetInstance().SendPacketUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), createOtherRet, pPlayer->GetSession());
 			
 			if ((*iter)->GetStateMoving())
 			{
 				pPlayer->GetSession()->_sendSerialPacket.Clear();
 				int moveRet = SetSCPacket_MOVE_START(&pPlayer->GetSession()->_sendSerialPacket,
 					(*iter)->GetID(), (*iter)->GetMoveDirection(), (*iter)->GetX(), (*iter)->GetY());
-				NetworkManager::GetInstance().EnqMsgUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), moveRet, pPlayer->GetSession());
+				NetworkManager::GetInstance().SendPacketUnicast(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), moveRet, pPlayer->GetSession());
 			}
 		
 		}

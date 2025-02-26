@@ -5,6 +5,8 @@
 #include "Protocol.h"
 #include "ObjectPool.h"
 
+#include "SystemLog.h"
+
 
 /*========================
 *		FUNCTION
@@ -45,28 +47,28 @@ public:
 		static NetworkManager _NetworkMgr;
 		return _NetworkMgr;
 	}
-	bool HandleCSPackets(Player* pPlayer, UINT8 action_type);
-	bool HandleCSPacket_MoveStart(Player* pPlayer);
-	bool HandleCSPacket_MoveStop(Player* pPlayer);
-	bool HandleCSPacket_Attack1(Player* pPlayer);
-	bool HandleCSPacket_Attack2(Player* pPlayer);
-	bool HandleCSPacket_Attack3(Player* pPlayer);
-	bool HandleCSPacket_ECHO(Player* pPlayer);
-	void EnqMsgUnicast(char* msg, int msgSize, Session* pSession);
+	inline bool HandleCSPackets(Player* pPlayer, BYTE action_type);
+	inline bool HandleCSPacket_MoveStart(Player* pPlayer);
+	inline bool HandleCSPacket_MoveStop(Player* pPlayer);
+	inline bool HandleCSPacket_Attack1(Player* pPlayer);
+	inline bool HandleCSPacket_Attack2(Player* pPlayer);
+	inline bool HandleCSPacket_Attack3(Player* pPlayer);
+	inline bool HandleCSPacket_ECHO(Player* pPlayer);
+	inline void SendPacketUnicast(char* msg, int msgSize, Session* pSession);
 
-	bool GetCSPacket_ECHO(SerializePacket* pPacket, RingBuffer* recvRBuffer, int& time);
-	void SelectModel(int rStarIdx, int rCount, int wStartIdx, int wCount);
+	inline bool GetCSPacket_ECHO(SerializePacket* pPacket, RingBuffer* recvRBuffer, int& time);
+	inline void SelectModel(int rStarIdx, int rCount, int wStartIdx, int wCount);
 	void NetworkUpdate();
 private:
-	void AcceptProc();
-	void RecvProc(Session* session);
-	void SendProc(Session* session);
+	inline void AcceptProc();
+	inline void RecvProc(Session* session);
+	inline void SendProc(Session* session);
 
 // session ฐüทร
 	int _sessionIDs = 0;
 	int _usableCnt = 0;
 	int _usableSessionID[dfSESSION_MAX];
-	void DisconnectDeadSessions();
+	inline void DisconnectDeadSessions();
 public:
 	int _disconnectCnt = 0;
 	int _disconnectSessionIDs[dfSESSION_MAX];

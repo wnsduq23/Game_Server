@@ -120,6 +120,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,6 +130,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CrashDump.cpp" />
     <ClCompile Include="Session.cpp" />
     <ClCompile Include="SetSCPacket.cpp" />
     <ClCompile Include="Ingame.cpp" />
@@ -136,14 +138,13 @@
     <ClCompile Include="NetworkManager.cpp" />
     <ClCompile Include="ObjectPoolManager.cpp" />
     <ClCompile Include="Player.cpp" />
-    <ClCompile Include="RingBuffer.cpp" />
-    <ClCompile Include="Sector.cpp" />
-    <ClCompile Include="SerializePacket.cpp" />
+    <ClCompile Include="SystemLog.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CrashDump.h" />
     <ClInclude Include="IngameManager.h" />
-    <ClInclude Include="SetSCPacket.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="SetSCPacket.h" />
     <ClInclude Include="NetworkManager.h" />
     <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="Protocol.h" />
@@ -152,6 +153,7 @@
     <ClInclude Include="Sector.h" />
     <ClInclude Include="SerializePacket.h" />
     <ClInclude Include="Session.h" />
+    <ClInclude Include="SystemLog.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

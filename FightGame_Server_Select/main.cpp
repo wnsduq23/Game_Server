@@ -1,15 +1,20 @@
-#include "main.h"
 #include "NetworkManager.h"
 #include "IngameManager.h"
+#include "SystemLog.h"
+#include "main.h"
 
-bool g_bShutdown = false;
+CrashDump g_dump;
 
 int main(void)
 {
+	srand(GetCurrentThreadId());
+	SYSLOG_DIRECTORY(L"SystemLog");
+	SYSLOG_LEVEL(SystemLog::DEBUG_LEVEL);
+	LOG(L"FightGame", SystemLog::SYSTEM_LEVEL, L"%s", L"Main Thread Start\n");
 	NetworkManager& networkManager = NetworkManager::GetInstance();
 	IngameManager& ingameManager = IngameManager::GetInstance();
 
-	while (!g_bShutdown)
+	while (1)
 	{
 		//network
 		networkManager.NetworkUpdate();
@@ -17,5 +22,6 @@ int main(void)
 		//Game logic
 		ingameManager.GameContentsModule();
 	}
+	LOG(L"FightGame", SystemLog::SYSTEM_LEVEL, L"%s", L"Main Thread Terminate\n");
 	return (0);
 }

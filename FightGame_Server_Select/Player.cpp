@@ -3,9 +3,7 @@
 #include "Protocol.h"
 #include "IngameManager.h"
 
-#define RECV_PACKET_DEBUG
-
-Player::Player(Session* pSession, int ID)
+ Player::Player(Session* pSession, int ID)
 	: _pSession(pSession), _pSector(nullptr), _ID(ID),
 	_headDirection(dfMOVE_DIR_RR),
 	_moveDirection(dfMOVE_DIR_LL),
@@ -136,7 +134,7 @@ void Player::MoveUpdate()
 	}
 }
 
-void Player::SetPlayerMoveStart(char& moveDirection, short& x, short& y)
+void Player::SetPlayerMoveStart(BYTE& moveDirection, short& x, short& y)
 {
 	_x = x;
 	_y = y;
@@ -159,7 +157,7 @@ void Player::SetPlayerMoveStart(char& moveDirection, short& x, short& y)
 	}	
 }
 
-void Player::SetPlayerMoveStop(char& direction, short& x, short& y)
+void Player::SetPlayerMoveStop(BYTE& direction, short& x, short& y)
 {
 	_x = x;
 	_y = y;
@@ -167,7 +165,7 @@ void Player::SetPlayerMoveStop(char& direction, short& x, short& y)
 	_headDirection = direction;	
 }
 
-void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x, short& y)
+void Player::SetPlayerAttack1(Player*& pDamagedPlayer, BYTE& direction, short& x, short& y)
 {
 	_x = x;
 	_y = y;
@@ -190,9 +188,10 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 					pDamagedPlayer = (*iter);
 					pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-					if (pDamagedPlayer->_hp <= 0)
+					if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 					{
 						//_deadCnt++;
+						pDamagedPlayer->_hp = 0;
 						pDamagedPlayer->GetSession()->SetSessionDead();
 					}
 					return;
@@ -212,9 +211,10 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 					pDamagedPlayer = (*iter);
 					pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-					if (pDamagedPlayer->_hp <= 0)
+					if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 					{
 						//_deadCnt++;
+						pDamagedPlayer->_hp = 0;
 						pDamagedPlayer->GetSession()->SetSessionDead();
 					}
 					return;
@@ -233,11 +233,13 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -254,11 +256,13 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -278,9 +282,10 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
 						return;
@@ -299,11 +304,13 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -327,11 +334,13 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 					pDamagedPlayer = (*iter);
 					pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-					if (pDamagedPlayer->_hp <= 0)
+					if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 					{
 						//_deadCnt++;
+						pDamagedPlayer->_hp = 0;
 						pDamagedPlayer->GetSession()->SetSessionDead();
 					}
+
 					return;
 				}
 			}
@@ -349,11 +358,13 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 					pDamagedPlayer = (*iter);
 					pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-					if (pDamagedPlayer->_hp <= 0)
+					if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 					{
 						//_deadCnt++;
+						pDamagedPlayer->_hp = 0;
 						pDamagedPlayer->GetSession()->SetSessionDead();
 					}
+
 					return;
 				}
 			}
@@ -370,9 +381,10 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
 						return;
@@ -391,11 +403,13 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -415,9 +429,10 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
 						return;
@@ -436,11 +451,13 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK1_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -449,7 +466,7 @@ void Player::SetPlayerAttack1(Player*& pDamagedPlayer, char& direction, short& x
 	}
 }
 
-void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x, short& y)
+void Player::SetPlayerAttack2(Player*& pDamagedPlayer, BYTE& direction, short& x, short& y)
 {
 	_x = x;
 	_y = y;
@@ -472,11 +489,13 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 					pDamagedPlayer = (*iter);
 					pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
 
-					if (pDamagedPlayer->_hp <= 0)
+					if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 					{
 						//_deadCnt++;
+						pDamagedPlayer->_hp = 0;
 						pDamagedPlayer->GetSession()->SetSessionDead();
 					}
+
 					return;
 				}
 			}
@@ -494,11 +513,13 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 					pDamagedPlayer = (*iter);
 					pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
 
-					if (pDamagedPlayer->_hp <= 0)
+					if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 					{
 						//_deadCnt++;
+						pDamagedPlayer->_hp = 0;
 						pDamagedPlayer->GetSession()->SetSessionDead();
 					}
+
 					return;
 				}
 			}
@@ -515,9 +536,10 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
 						return;
@@ -536,11 +558,13 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -560,11 +584,13 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -581,11 +607,13 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -609,11 +637,13 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 					pDamagedPlayer = (*iter);
 					pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
 
-					if (pDamagedPlayer->_hp <= 0)
+					if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 					{
 						//_deadCnt++;
+						pDamagedPlayer->_hp = 0;
 						pDamagedPlayer->GetSession()->SetSessionDead();
 					}
+
 					return;
 				}
 			}
@@ -631,11 +661,13 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 					pDamagedPlayer = (*iter);
 					pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
 
-					if (pDamagedPlayer->_hp <= 0)
+					if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 					{
 						//_deadCnt++;
+						pDamagedPlayer->_hp = 0;
 						pDamagedPlayer->GetSession()->SetSessionDead();
 					}
+
 					return;
 				}
 			}
@@ -652,11 +684,13 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -673,11 +707,13 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -697,11 +733,13 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -718,11 +756,13 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK2_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -730,7 +770,7 @@ void Player::SetPlayerAttack2(Player*& pDamagedPlayer, char& direction, short& x
 		}
 	}
 }
-void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x, short& y)
+void Player::SetPlayerAttack3(Player*& pDamagedPlayer, BYTE& direction, short& x, short& y)
 {
 	_x = x;
 	_y = y;
@@ -753,11 +793,13 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 					pDamagedPlayer = (*iter);
 					pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
 
-					if (pDamagedPlayer->_hp <= 0)
+					if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 					{
 						//_deadCnt++;
+						pDamagedPlayer->_hp = 0;
 						pDamagedPlayer->GetSession()->SetSessionDead();
 					}
+
 					return;
 				}
 			}
@@ -775,11 +817,13 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 					pDamagedPlayer = (*iter);
 					pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
 
-					if (pDamagedPlayer->_hp <= 0)
+					if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 					{
 						//_deadCnt++;
+						pDamagedPlayer->_hp = 0;
 						pDamagedPlayer->GetSession()->SetSessionDead();
 					}
+
 					return;
 				}
 			}
@@ -796,11 +840,13 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -817,11 +863,13 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -841,11 +889,13 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -862,11 +912,13 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -890,9 +942,10 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 					pDamagedPlayer = (*iter);
 					pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
 
-					if (pDamagedPlayer->_hp <= 0)
+					if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 					{
 						//_deadCnt++;
+						pDamagedPlayer->_hp = 0;
 						pDamagedPlayer->GetSession()->SetSessionDead();
 					}
 					return;
@@ -912,11 +965,13 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 					pDamagedPlayer = (*iter);
 					pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
 
-					if (pDamagedPlayer->_hp <= 0)
+					if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 					{
 						//_deadCnt++;
+						pDamagedPlayer->_hp = 0;
 						pDamagedPlayer->GetSession()->SetSessionDead();
 					}
+
 					return;
 				}
 			}
@@ -933,11 +988,13 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -954,9 +1011,10 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
 						return;
@@ -978,11 +1036,13 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -999,11 +1059,13 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 						pDamagedPlayer = (*iter);
 						pDamagedPlayer->_hp -= dfATTACK3_DAMAGE;
 
-						if (pDamagedPlayer->_hp <= 0)
+						if (pDamagedPlayer->_hp <= 0 || pDamagedPlayer->_hp > 100)
 						{
 							//_deadCnt++;
+							pDamagedPlayer->_hp = 0;
 							pDamagedPlayer->GetSession()->SetSessionDead();
 						}
+
 						return;
 					}
 				}
@@ -1011,3 +1073,5 @@ void Player::SetPlayerAttack3(Player*& pDamagedPlayer, char& direction, short& x
 		}
 	}
 }
+
+
