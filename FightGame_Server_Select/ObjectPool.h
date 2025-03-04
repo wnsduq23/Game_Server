@@ -2,8 +2,10 @@
 #include <new.h>
 #include <stdlib.h>
 #include <tchar.h>
+#include "SystemLog.h"
+#include "main.h"
 
-//#define __OBJECT_POOL_DEBUG__
+#define __OBJECT_POOL_DEBUG__
 
 /* ===============================================
 
@@ -63,16 +65,16 @@ private:
 
 	struct stNODE
 	{
-		stNODE* head;
+		size_t head;
 		DATA data;
-		stNODE* tail;
+		size_t tail;
 	};
 
 #else
 	struct stNODE
 	{
 		DATA data;
-		stNODE* tail = nullptr;
+		size_t tail = nullptr;
 	};
 #endif
 
@@ -124,11 +126,11 @@ ObjectPool<DATA>::ObjectPool(int iBlockNum, bool bPlacementNew, Types... args)
 		// Alloc 시 Data의 생성자를 호출하므로 이때 호출하면 안된다
 
 		_pFreeNode = (stNODE*)malloc(sizeof(stNODE));
-		_pFreeNode->tail = (stNODE*)nullptr;
+		_pFreeNode->tail = (size_t)nullptr;
 		for (int i = 1; i < _iBlockNum; i++)
 		{
 			stNODE* p = (stNODE*)malloc(sizeof(stNODE));
-			p->tail = (stNODE*)_pFreeNode;
+			p->tail = (size_t)_pFreeNode;
 			_pFreeNode = p;
 		}
 	}
@@ -137,12 +139,12 @@ ObjectPool<DATA>::ObjectPool(int iBlockNum, bool bPlacementNew, Types... args)
 		// Alloc 시 Data의 생성자를 호출하지 않으므로 이때 호출해야 된다
 
 		_pFreeNode = (stNODE*)malloc(sizeof(stNODE));
-		_pFreeNode->tail = (stNODE*)nullptr;
+		_pFreeNode->tail = (size_t)nullptr;
 		for (int i = 1; i < _iBlockNum; i++)
 		{
 			new (&(_pFreeNode->data)) DATA(args...);	//
 			stNODE* p = (stNODE*)malloc(sizeof(stNODE));
-			p->tail = (stNODE*)_pFreeNode;
+			p->tail = (size_t)_pFreeNode;
 			_pFreeNode = p;
 		}
 		new (&(_pFreeNode->data)) DATA(args...);		//
@@ -156,8 +158,15 @@ ObjectPool<DATA>::~ObjectPool()
 
 	if (_iUseCount != 0)
 	{
-		printf("There is Unfree Data!!\n");
-		LOG(L"ERROR", SystemLog::ERROR_LEVEL, L"%s[%d]: There is Unfree Data\n", _T(__FUNCTION__), __LINE__);
+		LOG(L"FightGame", SystemLog::ERROR_LEVEL,
+			L"%s[%d]: There is Unfree Data\n",
+			_T(__FUNCTION__), __LINE__);
+
+		::wprintf(L"ERROR", SystemLog::ERROR_LEVEL,
+			L"%s[%d]: There is Unfree Data\n",
+			_T(__FUNCTION__), __LINE__);
+
+		g_dump.Crash();
 	}
 
 #endif
@@ -169,9 +178,9 @@ ObjectPool<DATA>::~ObjectPool()
 	{
 		// Free 시 Data의 소멸자를 호출하므로 이때는 호출하면 안된다
 
-		while (_pFreeNode->tail != (stNODE*)nullptr)
+		while (_pFreeNode->tail != (size_t)nullptr)
 		{
-			stNODE* next = _pFreeNode->tail;
+			size_t next = _pFreeNode->tail;
 			free(_pFreeNode);
 			_pFreeNode = (stNODE*)next;
 		}
@@ -181,9 +190,9 @@ ObjectPool<DATA>::~ObjectPool()
 	{
 		// Free 시 Data의 소멸자를 호출하지 않으므로 이때 호출해야 된다
 
-		while (_pFreeNode->tail != (stNODE*)nullptr)
+		while (_pFreeNode->tail != (size_t)nullptr)
 		{
-			stNODE* next = _pFreeNode->tail;
+			size_t next = _pFreeNode->tail;
 			(_pFreeNode->data).~DATA(); //
 			free(_pFreeNode);
 			_pFreeNode = (stNODE*)next;
@@ -209,9 +218,9 @@ DATA* ObjectPool<DATA>::Alloc(Types... args)
 		_iCapacity++;
 		_iUseCount++;
 
-		stNODE* code = 0;
-		code |= (stNODE*)_iPoolID << (3 * 3);
-		code |= 0777 & (stNODE*)(&(pNew->data));
+		size_t code = 0;
+		code |= (size_t)_iPoolID << (3 * 3);
+		code |= 0777 & (size_t)(&(pNew->data));
 
 		pNew->head = code;
 		pNew->tail = code;
@@ -233,9 +242,9 @@ DATA* ObjectPool<DATA>::Alloc(Types... args)
 
 		_iUseCount++;
 
-		stNODE* code = 0;
-		code |= (stNODE*)_iPoolID << (3 * 3);
-		code |= 0777 & (stNODE*)(&(p->data));
+		size_t code = 0;
+		code |= (size_t)_iPoolID << (3 * 3);
+		code |= 0777 & (size_t)(&(p->data));
 
 		p->head = code;
 		p->tail = code;
@@ -254,9 +263,9 @@ DATA* ObjectPool<DATA>::Alloc(Types... args)
 
 		_iUseCount++;
 
-		stNODE* code = 0;
-		code |= (stNODE*)_iPoolID << (3 * 3);
-		code |= 0777 & (stNODE*)(&(p->data));
+		size_t code = 0;
+		code |= (size_t)_iPoolID << (3 * 3);
+		code |= 0777 & (size_t)(&(p->data));
 
 		p->head = code;
 		p->tail = code;
@@ -280,31 +289,34 @@ bool ObjectPool<DATA>::Free(DATA* pData)
 
 		_iUseCount--;
 
-		stNODE* code = 0;
-		code |= (stNODE*)_iPoolID << (3 * 3);
-		code |= 0777 & (stNODE*)pData;
+		size_t code = 0;
+		code |= (size_t)_iPoolID << (3 * 3);
+		code |= 0777 & (size_t)pData;
 
 
-		stNODE* offset = (stNODE*)(&(((stNODE*)nullptr)->data));
-		stNODE* pNode = (stNODE*)((stNODE*)pData - offset);
+		size_t offset = (size_t)(&(((stNODE*)nullptr)->data));
+		stNODE* pNode = (stNODE*)((size_t)pData - offset);
 
 		if (pNode->head != code || pNode->tail != code)
 		{
-			printf("Error! code %o, head %o, tail %o\n",
-				code, pNode->head, pNode->tail);
-			LOG(L"ERROR", SystemLog::ERROR_LEVEL,
-				L"%s[%d]: code %o, head %o, tail %o\n",
+			LOG(L"FightGame", SystemLog::ERROR_LEVEL,
+				L"%s[%d]: Code is Diffrent. code %o, head %o, tail %o\n",
 				_T(__FUNCTION__), __LINE__, code, pNode->head, pNode->tail);
+
+			::wprintf(L"%s[%d]: Code is Diffrent. code %o, head %o, tail %o\n",
+				_T(__FUNCTION__), __LINE__, code, pNode->head, pNode->tail);
+
+			g_dump.Crash();
 		}
 
 		pData->~DATA();
-		pNode->tail = (stNODE*)_pFreeNode;
+		pNode->tail = (size_t)_pFreeNode;
 		_pFreeNode = pNode;
 
 #else
 
 		pData->~DATA();								//
-		((stNODE*)pData)->tail = (stNODE*)_pFreeNode;
+		((stNODE*)pData)->tail = (size_t)_pFreeNode;
 		_pFreeNode = (stNODE*)pData;
 
 #endif
@@ -318,12 +330,12 @@ bool ObjectPool<DATA>::Free(DATA* pData)
 
 		_iUseCount--;
 
-		stNODE* code = 0;
-		code |= (stNODE*)_iPoolID << (3 * 3);
-		code |= 0777 & (stNODE*)pData;
+		size_t code = 0;
+		code |= (size_t)_iPoolID << (3 * 3);
+		code |= 0777 & (size_t)pData;
 
-		stNODE* offset = (stNODE*)(&(((stNODE*)nullptr)->data));
-		stNODE* pNode = (stNODE*)((stNODE*)pData - offset);
+		size_t offset = (size_t)(&(((stNODE*)nullptr)->data));
+		stNODE* pNode = (stNODE*)((size_t)pData - offset);
 
 		if (pNode->head != code || pNode->tail != code)
 		{
@@ -335,12 +347,12 @@ bool ObjectPool<DATA>::Free(DATA* pData)
 			return false;
 		}
 
-		pNode->tail = (stNODE*)_pFreeNode;
+		pNode->tail = (size_t)_pFreeNode;
 		_pFreeNode = pNode;
 
 #else
 
-		((stNODE*)pData)->tail = (stNODE*)_pFreeNode;
+		((stNODE*)pData)->tail = (size_t)_pFreeNode;
 		_pFreeNode = (stNODE*)pData;
 
 #endif

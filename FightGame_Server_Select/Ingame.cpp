@@ -1,5 +1,6 @@
 #include "IngameManager.h"
 #include "Sector.h"
+#include "Profiler.h"
 #include <Windows.h>
 #include "SetSCPacket.h"
 #include "main.h"
@@ -47,7 +48,9 @@ void IngameManager::GameContentsModule()
 
 	// 더 확장성을 고려한다면 여기에 몬스터, 이벤트 등등이 들어올 듯
 	// 플레이어 이동 및 공격 처리
+	PRO_BEGIN(L"Content");
 	PlayerActionProc();
+	PRO_END(L"Content");
 }
 
 /*===================================================================
@@ -183,7 +186,7 @@ void IngameManager::SetSectorsAroundInfo()
 
 void IngameManager::UpdateSector(Player* pPlayer, short direction)
 {
-	//PRO_BEGIN(L"Content: Update Sector");
+	PRO_BEGIN(L"Content: Update Sector");
 
 	vector<Player*>::iterator iter = pPlayer->GetSector()->_players.begin();
 	for (; iter < pPlayer->GetSector()->_players.end(); iter++)
@@ -260,7 +263,7 @@ void IngameManager::UpdateSector(Player* pPlayer, short direction)
 	pPlayer->SetSector(new_around_sector);
 	new_around_sector->_players.push_back(pPlayer); // check 
 
-	//PRO_END(L"Content: Update Sector");
+	PRO_END(L"Content: Update Sector");
 }
 
 // 한 섹터 안에 있는 모든 플레이어들에게 메시지 링버퍼에 넣음

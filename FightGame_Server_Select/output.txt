@@ -1,0 +1,14 @@
+----------------------------------------------
+| Name | Average | Call/s | Total |
+----------------------------------------------
+| Delayed Disconnect | 0.4439ms | 489676 | 217364.50ms |
+| Network | 81.7847ms | 489675 | 40047927.30ms |
+| Content | 621.9954ms | 1013 | 630081.30ms |
+| Network : Accept | 204.8514ms | 3442 | 705098.40ms |
+| Ingame : CreatePlayer | 31.1707ms | 5671 | 176769.00ms |
+| Network: Send | 10.6557ms | 847391 | 9029544.80ms |
+| Network: Recv | 1.6333ms | 15080 | 24629.80ms |
+| Network : HandlePacket | 22.9648ms | 15079 | 346286.60ms |
+| Content: Update Sector | 28.3666ms | 17287 | 490373.00ms |
+----------------------------------------------
+

@@ -1,9 +1,12 @@
 ﻿#include "NetworkManager.h"
 #include "IngameManager.h"
 #include "main.h"
+#include "Profiler.h"
 #include <stdio.h>
 #include "SetSCPacket.h"
 
+int a; //disconnect
+int b; // accept
 NetworkManager::NetworkManager()
 {
 	_pSessionPool = new ObjectPool<Session>(dfSESSION_MAX, false);
@@ -43,6 +46,12 @@ NetworkManager::NetworkManager()
 		g_dump.Crash();
 		return;
 	}
+
+	LINGER optval;
+	optval.l_onoff = 1;
+	optval.l_linger = 0;
+	int optRet = setsockopt(_listensock, SOL_SOCKET, SO_LINGER,
+		(char*)&optval, sizeof(optval));
 
 	// Bind
 	SOCKADDR_IN serveraddr;
@@ -102,6 +111,10 @@ NetworkManager::NetworkManager()
 		return;
 	}
 
+	_time.tv_sec = 0;
+	_time.tv_usec = 0;
+	_addrlen = sizeof(SOCKADDR_IN);
+
 	printf("Setting Complete!\n");
 }
 
@@ -124,7 +137,11 @@ NetworkManager::~NetworkManager()
 
 void NetworkManager::NetworkUpdate()
 { 
-	//PRO_BEGIN(L"Network");
+	PRO_BEGIN(L"Delayed Disconnect");
+	DisconnectDeadSessions();
+	PRO_END(L"Delayed Disconnect");	
+
+	PRO_BEGIN(L"Network");
 
 	int rStopIdx = 0;
 	int wStopIdx = 0;
@@ -133,7 +150,7 @@ void NetworkManager::NetworkUpdate()
 
 	for (int i = 0; i < dfSESSION_MAX; i++)
 	{
-		if (_Sessions[i] == nullptr) continue;
+		if (_Sessions[i] == nullptr || !_Sessions[i]->_bAlive) continue;
 
 		_rSessions[rStopIdx++] = _Sessions[i];
 		if (_Sessions[i]->_sendRingBuf.GetUseSize() > 0)
@@ -164,11 +181,8 @@ void NetworkManager::NetworkUpdate()
 
 	SelectModel(rStartIdx, rStopIdx - rStartIdx, wStartIdx, wStopIdx - wStartIdx);
 
-	//PRO_END(L"Network");
+	PRO_END(L"Network");
 
-	//PRO_BEGIN(L"Delayed Disconnect");
-	DisconnectDeadSessions();
-	//PRO_END(L"Delayed Disconnect");	
 }
 
 void NetworkManager::SelectModel(int rStartIdx, int rCount, int wStartIdx, int wCount)
@@ -183,10 +197,7 @@ void NetworkManager::SelectModel(int rStartIdx, int rCount, int wStartIdx, int w
 		FD_SET(_rSessions[rStartIdx + i]->_socket, &_rset);
 
 	// Select Socket Set
-	timeval time;
-	time.tv_sec = 0;
-	time.tv_usec = 0;
-	int selectRet = select(0, &_rset, &_wset, NULL, &time);
+	int selectRet = select(0, &_rset, &_wset, NULL, &_time);
 	if (selectRet == SOCKET_ERROR)
 	{
 		int err = WSAGetLastError();
@@ -201,25 +212,24 @@ void NetworkManager::SelectModel(int rStartIdx, int rCount, int wStartIdx, int w
 		g_dump.Crash();
 		return;
 	}
-
-	// Handle Selected Socket
-	else if (selectRet > 0)
+	else if (selectRet > 0) // Handle Selected Socket
 	{
 		if (FD_ISSET(_listensock, &_rset))
 			AcceptProc();
 
 		for (int i = 0; i < wCount; i++)
-			if (FD_ISSET(_wSessions[wStartIdx + i]->_socket, &_wset))
+			if (FD_ISSET(_wSessions[wStartIdx + i]->_socket, &_wset) && _wSessions[wStartIdx + i]->_bAlive)
 				SendProc(_wSessions[wStartIdx + i]);
 
 		for (int i = 0; i < rCount; i++)
-			if (FD_ISSET(_rSessions[rStartIdx + i]->_socket, &_rset))
+			if (FD_ISSET(_rSessions[rStartIdx + i]->_socket, &_rset) && _rSessions[rStartIdx + i]->_bAlive)
 				RecvProc(_rSessions[rStartIdx + i]);
 	}
 }
 
-void NetworkManager::SendProc(Session* session)
+/*void NetworkManager::SendProc(Session* session)
 {
+	PRO_BEGIN(L"Network: Send");
 	int sendRet = 0;
 	if (session->_sendRingBuf.DirectDequeueSize() == 0)
 	{
@@ -233,6 +243,7 @@ void NetworkManager::SendProc(Session* session)
 			session->_sendRingBuf.GetReadPtr(),
 			session->_sendRingBuf.DirectDequeueSize(), 0);
 	}
+	PRO_END(L"Network: Send");
 
 	if (sendRet == SOCKET_ERROR)
 	{
@@ -269,75 +280,200 @@ void NetworkManager::SendProc(Session* session)
 		g_dump.Crash();
 		return;
 	}
-}
-
-void NetworkManager::AcceptProc()
+}*/
+void NetworkManager::SendProc(Session* session)
 {
-	// Session Num is more than SESSION_MAX
-	if (_usableCnt == 0 && _sessionIDs == dfSESSION_MAX)
+	PRO_BEGIN(L"Network: Send");
+	int sendRet = 0;
+	int directDeqSize;
+	int moveRet;
+	directDeqSize = session->_sendRingBuf.DirectDequeueSize();
+	if (directDeqSize != session->_sendRingBuf.GetUseSize())
 	{
-		LOG(L"FightGame", SystemLog::DEBUG_LEVEL,
-			L"%s[%d]: usableCnt = 0, sessionIDs = MAX\n",
-			_T(__FUNCTION__), __LINE__);
+		sendRet = send(session->_socket,
+			session->_sendRingBuf.GetReadPtr(),
+			directDeqSize, 0);
 
-		::wprintf(L"%s[%d]: usableCnt = 0, sessionIDs = MAX\n",
-			_T(__FUNCTION__), __LINE__);
+		if (sendRet == SOCKET_ERROR)
+		{
+			int err = WSAGetLastError();
+			if (err == WSAECONNRESET || err == WSAECONNABORTED)
+			{
+				session->SetSessionDead();
+				return;
+			}
+			else if (err != WSAEWOULDBLOCK)
+			{
+				LOG(L"FightGame", SystemLog::ERROR_LEVEL,
+					L"%s[%d]: Session %d Send Error, %d\n",
+					_T(__FUNCTION__), __LINE__, session->_ID, err);
 
-		return;
+				::wprintf(L"%s[%d]: Session %d Send Error, %d\n",
+					_T(__FUNCTION__), __LINE__, session->_ID, err);
+
+				session->SetSessionDead();
+				return;
+			}
+		}
+		moveRet = session->_sendRingBuf.MoveReadPos(sendRet);
+		if (sendRet != moveRet)
+		{
+			LOG(L"FightGame", SystemLog::ERROR_LEVEL,
+				L"%s[%d] Session %d - sendRBuf moveReadPos Error (req - %d, ret - %d)\n",
+				_T(__FUNCTION__), __LINE__, session->_ID, sendRet, moveRet);
+
+			::wprintf(L"%s[%d] Session %d - sendRBuf moveReadPos Error (req - %d, ret - %d)\n",
+				_T(__FUNCTION__), __LINE__, session->_ID, sendRet, moveRet);
+
+			g_dump.Crash();
+			return;
+		}
+		sendRet = send(session->_socket,
+			session->_sendRingBuf.GetReadPtr(),
+			session->_sendRingBuf.GetUseSize(), 0);
 	}
-
-	int ID;
-	if (_usableCnt == 0)
-		ID = _sessionIDs++;
 	else
-		ID = _usableSessionID[--_usableCnt];
-
-	Session* pSession = _pSessionPool->Alloc();
-	pSession->Initialize(ID);
-
-	if (pSession == nullptr)
 	{
-		LOG(L"FightGame", SystemLog::ERROR_LEVEL,
-			L"%s[%d]: new Error, %d\n",
-			_T(__FUNCTION__), __LINE__, ID);
-
-		::wprintf(L"%s[%d]: new Error, %d\n",
-			_T(__FUNCTION__), __LINE__, ID);
-
-		g_dump.Crash();	
-		return;
+		sendRet = send(session->_socket,
+			session->_sendRingBuf.GetReadPtr(),
+			directDeqSize, 0);
 	}
+	PRO_END(L"Network: Send");
 
-	int addrlen = sizeof(pSession->_addr);
-	pSession->_socket = accept(_listensock, (SOCKADDR*)&pSession->_addr, &addrlen);
-	if (pSession->_socket == INVALID_SOCKET)
+	if (sendRet == SOCKET_ERROR)
 	{
 		int err = WSAGetLastError();
-		
-		LOG(L"FightGame", SystemLog::ERROR_LEVEL,
-			L"%s[%d]: accept Error, %d\n",
-			_T(__FUNCTION__), __LINE__, err);
+		if (err == WSAECONNRESET || err == WSAECONNABORTED)
+		{
+			session->SetSessionDead();
+			return;
+		}
+		else if (err != WSAEWOULDBLOCK)
+		{
+			LOG(L"FightGame", SystemLog::ERROR_LEVEL,
+				L"%s[%d]: Session %d Send Error, %d\n",
+				_T(__FUNCTION__), __LINE__, session->_ID, err);
 
-		::wprintf(L"%s[%d]: accept Error, %d\n",
-			_T(__FUNCTION__), __LINE__, err);
+			::wprintf(L"%s[%d]: Session %d Send Error, %d\n",
+				_T(__FUNCTION__), __LINE__, session->_ID, err);
+
+			session->SetSessionDead();
+			return;
+		}
+	}
+
+	moveRet = session->_sendRingBuf.MoveReadPos(sendRet);
+	if (sendRet != moveRet)
+	{
+		LOG(L"FightGame", SystemLog::ERROR_LEVEL,
+			L"%s[%d] Session %d - sendRBuf moveReadPos Error (req - %d, ret - %d)\n",
+			_T(__FUNCTION__), __LINE__, session->_ID, sendRet, moveRet);
+
+		::wprintf(L"%s[%d] Session %d - sendRBuf moveReadPos Error (req - %d, ret - %d)\n",
+			_T(__FUNCTION__), __LINE__, session->_ID, sendRet, moveRet);
 
 		g_dump.Crash();
 		return;
 	}
-	linger lingerOption;
-	lingerOption.l_onoff = 1;
-	lingerOption.l_linger = 0;
-	setsockopt(pSession->_socket, SOL_SOCKET, SO_LINGER, (const char*)&lingerOption, sizeof(lingerOption));
+}
 
-	pSession->_lastRecvTime = GetTickCount64();
-	_Sessions[pSession->_ID] = pSession;
-	IngameManager::GetInstance().CreatePlayer(pSession);
+void NetworkManager::AcceptProc()
+{
+	static DWORD oldTick = GetTickCount64();
+	int cnt = 0;
+	PRO_BEGIN(L"Network : Accept");
+	while (cnt < 63)
+	{
+		if (_usableCnt == 0 && _sessionIDs >= (dfSESSION_MAX * 0.9))
+		{
+			// 강제로 죽은 세션을 처리하여 ID 재활용
+			DisconnectDeadSessions();
+		}
+		// Session Num is more than SESSION_MAX
+		if (_usableCnt == 0 && _sessionIDs >= dfSESSION_MAX)
+		{
+			LOG(L"FightGame", SystemLog::DEBUG_LEVEL,
+				L"%s[%d]: usableCnt = 0, sessionIDs = MAX\n",
+				_T(__FUNCTION__), __LINE__);
 
+			::wprintf(L"%s[%d]: usableCnt = 0, sessionIDs = MAX\n",
+				_T(__FUNCTION__), __LINE__);
+
+			break;
+		}
+
+		//	::wprintf(L"%s[%d]: usableCnt = %d, sessionIDs = %d\n",
+		//		_T(__FUNCTION__), __LINE__, _usableCnt, _sessionIDs);
+		int ID;
+		if (_usableCnt == 0)
+			ID = _sessionIDs++;
+		else
+			ID = _usableSessionID[--_usableCnt];
+
+		Session* pSession = _pSessionPool->Alloc();
+
+		if (pSession == nullptr)
+		{
+			LOG(L"FightGame", SystemLog::ERROR_LEVEL,
+				L"%s[%d]: new Error, %d\n",
+				_T(__FUNCTION__), __LINE__, ID);
+
+			::wprintf(L"%s[%d]: new Error, %d\n",
+				_T(__FUNCTION__), __LINE__, ID);
+
+			break;
+		}
+		pSession->Initialize(ID);
+
+		pSession->_socket = accept(_listensock, (SOCKADDR*)&pSession->_addr, &_addrlen);
+		b++;
+		if (GetTickCount64() - oldTick > 1000)
+		{
+			::wprintf(L"%s[%d]: accept : %d\n",
+				_T(__FUNCTION__), __LINE__, b);
+			b = 0;
+			oldTick += (1000);
+		}
+		//BOOL noDelay = TRUE;
+		//setsockopt(pSession->_socket, IPPROTO_TCP, TCP_NODELAY, (const char*)&noDelay, sizeof(noDelay));
+		if (pSession->_socket == INVALID_SOCKET)
+		{
+			int err = WSAGetLastError();
+
+			if (err == WSAEWOULDBLOCK)
+			{
+				_pSessionPool->Free(pSession);
+				break;
+			}
+			else
+			{
+				LOG(L"FightGame", SystemLog::ERROR_LEVEL,
+					L"%s[%d]: accept Error, %d\n",
+					_T(__FUNCTION__), __LINE__, err);
+
+				::wprintf(L"%s[%d]: accept Error, %d\n",
+					_T(__FUNCTION__), __LINE__, err);
+
+				_pSessionPool->Free(pSession);
+				break;
+			}
+		}
+
+		pSession->_lastRecvTime = GetTickCount64();
+		_Sessions[pSession->_ID] = pSession;
+		PRO_BEGIN(L"Ingame : CreatePlayer");
+		IngameManager::GetInstance().CreatePlayer(pSession);
+		PRO_END(L"Ingame : CreatePlayer");
+
+	}
+
+	PRO_END(L"Network : Accept");
 }
 
 void NetworkManager::RecvProc(Session* session)
 {
 	session->_lastRecvTime = GetTickCount64();
+	PRO_BEGIN(L"Network: Recv");
 	int recvRet = 0;
 	
 	int directEnqueue = session->_recvRingBuf.DirectEnqueueSize();
@@ -367,6 +503,7 @@ void NetworkManager::RecvProc(Session* session)
 		}
 	}
 
+	PRO_END(L"Network: Recv");
 	if (recvRet == SOCKET_ERROR)
 	{
 		int err = WSAGetLastError();
@@ -430,6 +567,8 @@ void NetworkManager::RecvProc(Session* session)
 		return;
 	}
 	int iUsedSize = session->_recvRingBuf.GetUseSize();
+	// recvRingbuf에서 다 빼낼 때까지
+	PRO_BEGIN(L"Network : HandlePacket");
 	while (iUsedSize > 0)
 	{
 		if (iUsedSize <= dfPACKET_HEADER_SIZE)
@@ -450,7 +589,7 @@ void NetworkManager::RecvProc(Session* session)
 			return;
 		}
 
-		if (header.code != dfPACKET_HEADER_CODE)
+		if (header.code != (BYTE)dfPACKET_HEADER_CODE)
 		{
 			LOG(L"FightGame", SystemLog::ERROR_LEVEL,
 				L"%s[%d]: Session %d Wrong Header Code Error, %x\n",
@@ -496,7 +635,77 @@ void NetworkManager::RecvProc(Session* session)
 
 		iUsedSize = session->_recvRingBuf.GetUseSize();
 	}
+	PRO_END(L"Network : HandlePacket");
 }
+
+
+void NetworkManager::DisconnectDeadSessions()
+{
+	for (int i = 0; i < _disconnectCnt; i++)
+	{
+		int ID = _disconnectSessionIDs[i];
+
+		Player* pPlayer =IngameManager::GetInstance()._Players[ID];
+		if (pPlayer == nullptr)
+		{
+			LOG(L"FightGame", SystemLog::ERROR_LEVEL,
+				L"%s[%d] Session %d player is nullptr\n",
+				_T(__FUNCTION__), __LINE__, ID);
+
+			::wprintf(L"%s[%d] Session %d player is nullptr\n",
+				_T(__FUNCTION__), __LINE__, ID);
+
+			g_dump.Crash();
+			return;
+		}
+		LOG(L"FightGame", SystemLog::DEBUG_LEVEL,
+			L"%s[%d] Session %d player ,usablecnt : %d\n",
+			_T(__FUNCTION__), __LINE__, ID, _usableCnt);
+
+		::wprintf(L"%s[%d] Session %d player, usablecnt : %d\n",
+			_T(__FUNCTION__), __LINE__, ID, _usableCnt);
+
+		IngameManager::GetInstance()._Players[ID] = nullptr;
+
+		// Remove from Sector
+		vector<Player*>::iterator vectorIter = pPlayer->GetSector()->_players.begin();
+		for (; vectorIter < pPlayer->GetSector()->_players.end(); vectorIter++)
+		{
+			if ((*vectorIter) == pPlayer)
+			{
+				pPlayer->GetSector()->_players.erase(vectorIter);
+				break;
+			}
+		}
+		
+		pPlayer->GetSession()->_sendSerialPacket.Clear();
+		int deleteRet = SetSCPacket_DELETE_CHARACTER(&pPlayer->GetSession()->_sendSerialPacket, pPlayer->GetID());
+		IngameManager::GetInstance().SendPacketAroundSector(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), deleteRet, pPlayer->GetSector());
+		IngameManager::GetInstance()._pPlayerPool->Free(pPlayer);
+		
+		Session* pSession = _Sessions[ID];
+		if (pSession == nullptr)
+		{
+			LOG(L"FightGame", SystemLog::ERROR_LEVEL,
+				L"%s[%d] Session %d is nullptr\n",
+				_T(__FUNCTION__), __LINE__, ID);
+
+			::wprintf(L"%s[%d] Session %d is nullptr\n",
+				_T(__FUNCTION__), __LINE__, ID);
+
+			g_dump.Crash();
+			return;
+		}
+		_Sessions[ID] = nullptr;
+		closesocket(pSession->_socket);
+		_pSessionPool->Free(pSession);
+		_usableSessionID[_usableCnt++] = ID;
+		a++;
+	}
+	_disconnectCnt = 0;
+}
+
+
 
 bool NetworkManager::HandleCSPackets(Player* pPlayer, BYTE type)
 {
@@ -570,11 +779,13 @@ bool NetworkManager::HandleCSPacket_MoveStart(Player* pPlayer)
 		X = pPlayer->GetX();
 		Y = pPlayer->GetY();
 		LOG(L"FightGame", SystemLog::DEBUG_LEVEL,
-			L"%s[%d] SessionID : %d (socket port :%d) \n",
+			L"%s[%d] SessionID : %d (socket port :%u) \n",
 			_T(__FUNCTION__), __LINE__, pPlayer->GetSession()->_ID, ntohs(pPlayer->GetSession()->_addr.sin_port));
 
-		::wprintf(L"%s[%d] SessionID : %d (socket port :%hd)\n",
+		::wprintf(L"%s[%d] SessionID : %d (socket port :%u)\n",
 			_T(__FUNCTION__), __LINE__, pPlayer->GetSession()->_ID, ntohs(pPlayer->GetSession()->_addr.sin_port));
+		PRO_SAVE(L"output.txt");
+		g_dump.Crash();
 	}
 
 	pPlayer->SetPlayerMoveStart(moveDirection, X, Y);
@@ -623,11 +834,13 @@ bool NetworkManager::HandleCSPacket_MoveStop(Player* pPlayer)
 		X = pPlayer->GetX();
 		Y = pPlayer->GetY();
 		LOG(L"FightGame", SystemLog::DEBUG_LEVEL,
-			L"%s[%d] SessionID : %d (socket port :%d) \n",
+			L"%s[%d] SessionID : %d (socket port :%u) \n",
 			_T(__FUNCTION__), __LINE__, pPlayer->GetSession()->_ID, ntohs(pPlayer->GetSession()->_addr.sin_port));
 
-		::wprintf(L"%s[%d] SessionID : %d (socket port :%d)\n",
+		::wprintf(L"%s[%d] SessionID : %d (socket port :%u)\n",
 			_T(__FUNCTION__), __LINE__, pPlayer->GetSession()->_ID, ntohs(pPlayer->GetSession()->_addr.sin_port));
+		PRO_SAVE(L"output.txt");
+		g_dump.Crash();
 	}
 
 	pPlayer->SetPlayerMoveStop(headDirection, X, Y);
@@ -677,11 +890,13 @@ bool NetworkManager::HandleCSPacket_Attack1(Player* pPlayer)
 		X = pPlayer->GetX();
 		Y = pPlayer->GetY();
 		LOG(L"FightGame", SystemLog::DEBUG_LEVEL,
-			L"%s[%d] SessionID : %d (socket port :%d) \n",
+			L"%s[%d] SessionID : %d (socket port :%u) \n",
 			_T(__FUNCTION__), __LINE__, pPlayer->GetSession()->_ID, ntohs(pPlayer->GetSession()->_addr.sin_port));
 
-		::wprintf(L"%s[%d] SessionID : %d (socket port :%d)\n",
+		::wprintf(L"%s[%d] SessionID : %d (socket port :%u)\n",
 			_T(__FUNCTION__), __LINE__, pPlayer->GetSession()->_ID, ntohs(pPlayer->GetSession()->_addr.sin_port));
+		PRO_SAVE(L"output.txt");
+		g_dump.Crash();
 	}
 
 	Player* damagedPlayer = nullptr;
@@ -740,11 +955,13 @@ bool NetworkManager::HandleCSPacket_Attack2(Player* pPlayer)
 		Y = pPlayer->GetY();
 
 		LOG(L"FightGame", SystemLog::DEBUG_LEVEL,
-			L"%s[%d] SessionID : %d (socket port :%d) \n",
+			L"%s[%d] SessionID : %d (socket port :%u) \n",
 			_T(__FUNCTION__), __LINE__, pPlayer->GetSession()->_ID, ntohs(pPlayer->GetSession()->_addr.sin_port));
 
-		::wprintf(L"%s[%d] SessionID : %d (socket port :%d)\n",
+		::wprintf(L"%s[%d] SessionID : %d (socket port :%u)\n",
 			_T(__FUNCTION__), __LINE__, pPlayer->GetSession()->_ID, ntohs(pPlayer->GetSession()->_addr.sin_port));
+		PRO_SAVE(L"output.txt");
+		g_dump.Crash();
 	}
 
 	Player* damagedPlayer = nullptr;
@@ -803,11 +1020,13 @@ bool NetworkManager::HandleCSPacket_Attack3(Player* pPlayer)
 		X = pPlayer->GetX();
 		Y = pPlayer->GetY();
 		LOG(L"FightGame", SystemLog::DEBUG_LEVEL,
-			L"%s[%d] SessionID : %d (socket port :%d) \n",
+			L"%s[%d] SessionID : %d (socket port :%u) \n",
 			_T(__FUNCTION__), __LINE__, pPlayer->GetSession()->_ID, ntohs(pPlayer->GetSession()->_addr.sin_port));
 
-		::wprintf(L"%s[%d] SessionID : %d (socket port :%d)\n",
+		::wprintf(L"%s[%d] SessionID : %d (socket port :%u)\n",
 			_T(__FUNCTION__), __LINE__, pPlayer->GetSession()->_ID, ntohs(pPlayer->GetSession()->_addr.sin_port));
+		PRO_SAVE(L"output.txt");
+		g_dump.Crash();
 	}
 
 	Player* damagedPlayer = nullptr;
@@ -865,79 +1084,6 @@ bool NetworkManager::HandleCSPacket_ECHO(Player* pPlayer)
 	
 	return true;
 }
-
-
-void NetworkManager::DisconnectDeadSessions()
-{
-	for (int i = 0; i < _disconnectCnt; i++)
-	{
-		int ID = _disconnectSessionIDs[i];
-
-		Player* pPlayer =IngameManager::GetInstance()._Players[ID];
-		if (pPlayer == nullptr)
-		{
-			LOG(L"FightGame", SystemLog::ERROR_LEVEL,
-				L"%s[%d] Session %d player is nullptr\n",
-				_T(__FUNCTION__), __LINE__, ID);
-
-			::wprintf(L"%s[%d] Session %d player is nullptr\n",
-				_T(__FUNCTION__), __LINE__, ID);
-
-			g_dump.Crash();
-			return;
-		}
-		/*if (pPlayer->GetHp() > 0 && GetTickCount64() - pPlayer->GetSession()->_lastRecvTime < dfNETWORK_PACKET_RECV_TIMEOUT)
-		{
-			LOG(L"FightGame", SystemLog::ERROR_LEVEL,
-				L"%s[%d] Session %d player is not HP under 0\n",
-				_T(__FUNCTION__), __LINE__, ID);
-
-			::wprintf(L"%s[%d] Session %d player is not HP under 0\n",
-				_T(__FUNCTION__), __LINE__, ID);
-
-			g_dump.Crash();
-			return;
-		}*/
-		IngameManager::GetInstance()._Players[ID] = nullptr;
-
-		// Remove from Sector
-		vector<Player*>::iterator vectorIter = pPlayer->GetSector()->_players.begin();
-		for (; vectorIter < pPlayer->GetSector()->_players.end(); vectorIter++)
-		{
-			if ((*vectorIter) == pPlayer)
-			{
-				pPlayer->GetSector()->_players.erase(vectorIter);
-				break;
-			}
-		}
-		
-		pPlayer->GetSession()->_sendSerialPacket.Clear();
-		int deleteRet = SetSCPacket_DELETE_CHARACTER(&pPlayer->GetSession()->_sendSerialPacket, pPlayer->GetID());
-		IngameManager::GetInstance().SendPacketAroundSector(pPlayer->GetSession()->_sendSerialPacket.GetReadPtr(), deleteRet, pPlayer->GetSector());
-		IngameManager::GetInstance()._pPlayerPool->Free(pPlayer);
-		
-		Session* pSession = _Sessions[ID];
-		if (pSession == nullptr)
-		{
-			LOG(L"FightGame", SystemLog::ERROR_LEVEL,
-				L"%s[%d] Session %d is nullptr\n",
-				_T(__FUNCTION__), __LINE__, ID);
-
-			::wprintf(L"%s[%d] Session %d is nullptr\n",
-				_T(__FUNCTION__), __LINE__, ID);
-
-			g_dump.Crash();
-			return;
-		}
-		_Sessions[ID] = nullptr;
-		closesocket(pSession->_socket);
-		_pSessionPool->Free(pSession);
-		_usableSessionID[_usableCnt++] = ID;
-	}
-
-	_disconnectCnt = 0;
-}
-
 
 
 //serialize Buffer로 바뀌면서 msg로 header + msg가 들어옴.

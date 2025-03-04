@@ -228,7 +228,7 @@ public:
     }
 
     inline int DirectDequeueSize(void)
-    {
+{
         if (_writePos >= _readPos)
             return _writePos - _readPos;
         else

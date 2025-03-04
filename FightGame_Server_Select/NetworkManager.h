@@ -28,6 +28,8 @@ private:
 	SOCKET					_listensock = INVALID_SOCKET;
 	FD_SET					_rset;
 	FD_SET					_wset;
+	timeval					_time;
+	int						_addrlen;
 public:
 	// 복사 및 할당 방지
 	NetworkManager(const NetworkManager&) = delete;
@@ -72,5 +74,9 @@ private:
 public:
 	int _disconnectCnt = 0;
 	int _disconnectSessionIDs[dfSESSION_MAX];
+
+
+
+	int _acceptCnt = 0;
 };
 

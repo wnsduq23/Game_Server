@@ -131,6 +131,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CrashDump.cpp" />
+    <ClCompile Include="Profiler.cpp" />
     <ClCompile Include="Session.cpp" />
     <ClCompile Include="SetSCPacket.cpp" />
     <ClCompile Include="Ingame.cpp" />
@@ -144,6 +145,7 @@
     <ClInclude Include="CrashDump.h" />
     <ClInclude Include="IngameManager.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="Profiler.h" />
     <ClInclude Include="SetSCPacket.h" />
     <ClInclude Include="NetworkManager.h" />
     <ClInclude Include="ObjectPool.h" />
