@@ -18,7 +18,7 @@
 //-----------------------------------------------------------------
 
 #define dfSECTOR_SIZE_X					200
-#define dfSECTOR_SIZE_Y					200 
+#define dfSECTOR_SIZE_Y					200
 //√÷º“ 4x4 
 #define dfSECTOR_CNT_X					(dfRANGE_MOVE_RIGHT / dfSECTOR_SIZE_X) + 4
 #define dfSECTOR_CNT_Y					(dfRANGE_MOVE_BOTTOM / dfSECTOR_SIZE_Y) + 4

@@ -28,30 +28,30 @@ class Player
 {
 public:
 	Player()=default;
-	Player(Session* pSession, int ID);
+	Player(Session* pSession, DWORD ID);
 	~Player();
 
 private:
 	Session* _pSession;
 	Sector* _pSector;
 private:
-	int		_ID;
+	DWORD		_ID;
 	BYTE		_headDirection;
 	BYTE		_moveDirection;
 	short		_x;
 	short		_y;
-	BYTE		_hp;
+	char		_hp;
 	BOOL		_bMove;
 
 public:
 	Session* GetSession() { return _pSession; }
 	Sector* GetSector() { return _pSector; }
-	int		GetID() { return _ID; }
+	DWORD		GetID() { return _ID; }
 	BYTE		GetMoveDirection() { return _moveDirection; }
 	BYTE		GetHeadDirection() { return _headDirection; }
 	short		GetX() { return _x; }
 	short		GetY() { return _y; }
-	BYTE		GetHp() { return _hp; }
+	char		GetHp() { return _hp; }
 	bool		GetStateMoving() { return _bMove; }
 	void		SetSector(Sector* pSector) { _pSector = pSector; }
 	
@@ -66,8 +66,6 @@ public:
 	void SetPlayerAttack2(Player*& pDamagedPlayer, BYTE& direction, short& x, short& y);
 	void SetPlayerAttack3(Player*& pDamagedPlayer, BYTE& direction, short& x, short& y);
 
-	void UpdateSector(Player* pPlayer, short Direction);
-	inline void SetPlayerSector(Player* pPlayer);
 public:
 	void MoveUpdate();
 private:

@@ -1,4 +1,4 @@
-﻿#include "NetworkManager.h"
+#include "NetworkManager.h"
 #include "IngameManager.h"
 #include "main.h"
 #include "Profiler.h"
@@ -45,6 +45,12 @@ NetworkManager::NetworkManager()
 		g_dump.Crash();
 		return;
 	}
+
+	LINGER optval;
+	optval.l_onoff = 1;
+	optval.l_linger = 0;
+	int optRet = setsockopt(_listensock, SOL_SOCKET, SO_LINGER,
+		(char*)&optval, sizeof(optval));
 
 	// Bind
 	SOCKADDR_IN serveraddr;
@@ -130,9 +136,6 @@ NetworkManager::~NetworkManager()
 
 void NetworkManager::NetworkUpdate()
 { 
-	PRO_BEGIN(L"Delayed Disconnect");
-	DisconnectDeadSessions();
-	PRO_END(L"Delayed Disconnect");	
 
 	PRO_BEGIN(L"Network");
 
@@ -214,14 +217,13 @@ void NetworkManager::SelectModel(int rStartIdx, int rCount, int wStartIdx, int w
 		if (FD_ISSET(_listensock, &_rset))
 			AcceptProc();
 
-		for (int i = 0; i < rCount; i++)
-			if (FD_ISSET(_rSessions[rStartIdx + i]->_socket, &_rset) && _rSessions[rStartIdx + i]->_bAlive)
-				RecvProc(_rSessions[rStartIdx + i]);
-
 		for (int i = 0; i < wCount; i++)
 			if (FD_ISSET(_wSessions[wStartIdx + i]->_socket, &_wset) && _wSessions[wStartIdx + i]->_bAlive)
 				SendProc(_wSessions[wStartIdx + i]);
 
+		for (int i = 0; i < rCount; i++)
+			if (FD_ISSET(_rSessions[rStartIdx + i]->_socket, &_rset) && _rSessions[rStartIdx + i]->_bAlive)
+				RecvProc(_rSessions[rStartIdx + i]);
 	}
 }
 
@@ -286,7 +288,6 @@ void NetworkManager::SendProc(Session* session)
 
 	if (sendRet == SOCKET_ERROR)
 	{
-
 		int err = WSAGetLastError();
 		if (err == WSAECONNRESET || err == WSAECONNABORTED)
 		{
@@ -320,10 +321,6 @@ void NetworkManager::SendProc(Session* session)
 		g_dump.Crash();
 		return;
 	}
-	// 이거 넣으니까 오류 안 생김 ㄷㄷ
-	// 왜그럴까? 한 번에 너무많은 패킷을 보내서 그런 것 같은데?
-	//if (session->_sendRingBuf.GetUseSize())
-	printf("\n");
 }
 
 void NetworkManager::AcceptProc()
@@ -368,12 +365,14 @@ void NetworkManager::AcceptProc()
 		b = 0;
 		oldTick += 1000;
 	}*/
+	// 에러 처리: accept 실패 시 ReleaseSession 호출
 	if (pSession->_socket == INVALID_SOCKET)
 	{
 		int err = WSAGetLastError();
 		if (err == WSAEWOULDBLOCK)
 		{
-			_usableSessionID[_usableCnt++] = ID;
+			//ReleaseSession(pSession);
+			// 여기 usable 증가 시켜줘야 하는거 아님?
 			_pSessionPool->Free(pSession);
 			return;
 		}
@@ -383,15 +382,11 @@ void NetworkManager::AcceptProc()
 				L"%s[%d]: accept Error, %d\n", _T(__FUNCTION__), __LINE__, err);
 			::wprintf(L"%s[%d]: accept Error, %d\n", _T(__FUNCTION__), __LINE__, err);
 			_pSessionPool->Free(pSession);
+			//ReleaseSession(pSession);
 			return;
 		}
 	}
 
-	LINGER optval;
-	optval.l_onoff = 1;
-	optval.l_linger = 0;
-	int optRet = setsockopt(pSession->_socket, SOL_SOCKET, SO_LINGER,
-		(char*)&optval, sizeof(optval));
 	pSession->_lastRecvTime = GetTickCount64();
 	_Sessions[pSession->_ID] = pSession;
 	PRO_BEGIN(L"Ingame : CreatePlayer");
@@ -400,10 +395,104 @@ void NetworkManager::AcceptProc()
 	PRO_END(L"Network : Accept");
 }
 
-/*
-* 링 버퍼에서 direct로 받을 수 있는 만큼만 받거나, writePtr이 맨 뒤면 
-* ReadPtr까지 (= freesize)
-*/
+/*Session* NetworkManager::AllocSession() {
+	DWORD id;
+	// 해제된 세션 ID가 있다면 재활용합니다.
+	if (!freeSessionIDQueue.empty()) {
+		id = freeSessionIDQueue.front();
+		freeSessionIDQueue.pop();
+	}
+	else {
+		// 만약 사용 가능한 해제 세션이 없으면 새 ID 할당
+		if (nextSessionId < dfSESSION_MAX)
+			id = nextSessionId++;
+		else
+			return nullptr; // 세션 풀 한계 도달
+	}
+
+	Session* pSession = _pSessionPool->Alloc();
+	if (pSession == nullptr)
+		return nullptr;
+	pSession->Initialize(id);
+	_Sessions[id] = pSession;
+	return pSession;
+}
+
+// 세션 해제 함수 – 해제 즉시 호출해서 세션 ID를 재활용 큐에 넣습니다.
+void NetworkManager::ReleaseSession(Session* session) {
+	DWORD id = session->_ID;
+	closesocket(session->_socket);
+	session->_socket = INVALID_SOCKET;
+	_pSessionPool->Free(session);
+	_Sessions[id] = nullptr;
+	freeSessionIDQueue.push(id);
+	LOG(L"FightGame", SystemLog::DEBUG_LEVEL,
+		L"ReleaseSession: Recycled session ID %d, freeQueue size now %d\n",
+		id, (int)freeSessionIDQueue.size());
+}
+
+void NetworkManager::AcceptProc()
+{
+	static DWORD oldTick = GetTickCount64();
+	int cnt = 0;
+	PRO_BEGIN(L"Network : Accept");
+	// 63인 이유 : fd_setsize가 서버가 동시에 처리할 수 있는 최대 연결 수 이므로?
+	// 한 번 select에 64개 이하로만 연결 가능하다?
+	while (cnt < 63)
+	{
+		Session* pSession = AllocSession();
+		if (pSession == nullptr)
+		{
+			LOG(L"FightGame", SystemLog::ERROR_LEVEL,
+				L"%s[%d]: new Error\n",
+				_T(__FUNCTION__), __LINE__);
+
+			::wprintf(L"%s[%d]: new Error\n",
+				_T(__FUNCTION__), __LINE__);
+
+			break;
+		}
+
+		int addrLen = sizeof(sockaddr_in);
+		pSession->_socket = accept(_listensock, (SOCKADDR*)&pSession->_addr, &addrLen);
+		b++;
+		if (GetTickCount64() - oldTick > 1000)
+		{
+			::wprintf(L"%s[%d]: accept : %d\n", _T(__FUNCTION__), __LINE__, b);
+			b = 0;
+			oldTick += 1000;
+		}
+		// 에러 처리: accept 실패 시 ReleaseSession 호출
+		if (pSession->_socket == INVALID_SOCKET)
+		{
+			int err = WSAGetLastError();
+			if (err == WSAEWOULDBLOCK)
+			{
+				ReleaseSession(pSession);
+				//_pSessionPool->Free(pSession);
+				break;
+			}
+			else
+			{
+				LOG(L"FightGame", SystemLog::ERROR_LEVEL,
+					L"%s[%d]: accept Error, %d\n", _T(__FUNCTION__), __LINE__, err);
+				::wprintf(L"%s[%d]: accept Error, %d\n", _T(__FUNCTION__), __LINE__, err);
+				//_pSessionPool->Free(pSession);
+				ReleaseSession(pSession);
+				break;
+			}
+		}
+
+		pSession->_lastRecvTime = GetTickCount64();
+		_Sessions[pSession->_ID] = pSession;
+		PRO_BEGIN(L"Ingame : CreatePlayer");
+		IngameManager::GetInstance().CreatePlayer(pSession);
+		PRO_END(L"Ingame : CreatePlayer");
+		cnt++;
+	}
+	PRO_END(L"Network : Accept");
+}*/
+
 void NetworkManager::RecvProc(Session* session)
 {
 	/* {
@@ -586,6 +675,7 @@ void NetworkManager::DisconnectDeadSessions()
 	for (int i = 0; i < _disconnectCnt; i++)
 	{
 		__int64 ID = _disconnectSessionIDs[i];
+		printf("Disconnect ID : %d\n", ID);
 
 		Player* pPlayer =IngameManager::GetInstance()._Players[ID];
 		if (pPlayer == nullptr)

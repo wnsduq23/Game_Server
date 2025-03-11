@@ -4,8 +4,8 @@
 #include "SystemLog.h"
 #include <tchar.h>
 
-#define DEFAULT_BUF_SIZE 32768
-#define MAX_BUF_SIZE 65536
+#define DEFAULT_BUF_SIZE 10000
+#define MAX_BUF_SIZE 20000
 
 /*====================================================================
 

@@ -15,7 +15,7 @@ public:
 	bool GetSessionAlive() { return _bAlive; }
 	void SetSessionAlive() { _bAlive = true; }
 	void SetSessionDead();
-	inline void Initialize(int ID)
+	inline void Initialize(DWORD ID)
 	{
 		_ID = ID;
 		_bAlive = true;
@@ -23,7 +23,7 @@ public:
 		_sendRingBuf.ClearBuffer();
 	}
 public:
-	int		_ID;
+	DWORD		_ID;
 	bool		_bAlive;
 	SOCKET		_socket;
 	SOCKADDR_IN	_addr;

@@ -4,6 +4,7 @@
 #include "Player.h"
 #include "Protocol.h"
 #include "ObjectPool.h"
+#include <queue>
 
 #include "SystemLog.h"
 
@@ -36,9 +37,10 @@ public:
 	NetworkManager& operator=(const NetworkManager&) = delete;
 private:
 	ObjectPool<Session>* _pSessionPool;
-	Session* _Sessions[dfSESSION_MAX];  // Use Session ID for Index
+	Session* _Sessions[dfSESSION_MAX] = { nullptr };  // Use Session ID for Index
 	Session* _rSessions[dfSESSION_MAX];
 	Session* _wSessions[dfSESSION_MAX];
+
 public:
 	/*========================
 	*	CLASS FUNCTION
@@ -65,15 +67,17 @@ private:
 	inline void AcceptProc();
 	inline void RecvProc(Session* session);
 	inline void SendProc(Session* session);
+    inline void ReleaseSession(Session* session);
+    inline Session* AllocSession();
 
 // session ฐüทร
-	int _sessionIDs = 0;
+	DWORD _sessionIDs = 0;
 	int _usableCnt = 0;
-	int _usableSessionID[dfSESSION_MAX];
+	DWORD _usableSessionID[dfSESSION_MAX];
 	inline void DisconnectDeadSessions();
 public:
 	int _disconnectCnt = 0;
-	int _disconnectSessionIDs[dfSESSION_MAX];
+	DWORD _disconnectSessionIDs[dfSESSION_MAX];
 
 
 

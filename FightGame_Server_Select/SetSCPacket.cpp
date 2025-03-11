@@ -14,7 +14,7 @@ void SetSCPacket_HEADER(
 
 int SetSCPacket_CREATE_MY_CHARACTER(
 	SerializePacket* pPacket,
-	int ID, BYTE Direction, short X, short Y, BYTE HP) // headDirection
+	DWORD ID, BYTE Direction, short X, short Y, char HP) // headDirection
 {
 	int size = sizeof(ID) + sizeof(Direction) + sizeof(X) + sizeof(Y) + sizeof(HP);
 	stPACKET_HEADER header;
@@ -46,7 +46,7 @@ int SetSCPacket_CREATE_MY_CHARACTER(
 
 int SetSCPacket_CREATE_OTHER_CHARACTER(
 	SerializePacket* pPacket,
-	int ID, BYTE Direction, short X, short Y, BYTE HP) // headDirection
+	DWORD ID, BYTE Direction, short X, short Y, char HP) // headDirection
 {
 	int size = sizeof(ID) + sizeof(Direction) + sizeof(X) + sizeof(Y) + sizeof(HP);
 	stPACKET_HEADER header;
@@ -78,7 +78,7 @@ int SetSCPacket_CREATE_OTHER_CHARACTER(
 
 int SetSCPacket_DELETE_CHARACTER(
 	SerializePacket* pPacket,
-	int ID)
+	DWORD ID)
 {
 	int size = sizeof(ID);
 	stPACKET_HEADER header;
@@ -105,7 +105,7 @@ int SetSCPacket_DELETE_CHARACTER(
 }
 
 int SetSCPacket_MOVE_START(SerializePacket* pPacket,
-	int ID, BYTE Direction, short X, short Y)
+	DWORD ID, BYTE Direction, short X, short Y)
 {
 	int size = sizeof(ID) + sizeof(Direction) + sizeof(X) + sizeof(Y);
 	stPACKET_HEADER header;
@@ -136,7 +136,7 @@ int SetSCPacket_MOVE_START(SerializePacket* pPacket,
 
 
 int SetSCPacket_MOVE_STOP(SerializePacket* pPacket,
-	int ID, BYTE Direction, short X, short Y)
+	DWORD ID, BYTE Direction, short X, short Y)
 {
 	int size = sizeof(ID) + sizeof(Direction) + sizeof(X) + sizeof(Y);
 	stPACKET_HEADER header;
@@ -166,7 +166,7 @@ int SetSCPacket_MOVE_STOP(SerializePacket* pPacket,
 }
 
 int SetSCPacket_ATTACK1(SerializePacket* pPacket,
-	int ID, BYTE Direction, short X, short Y)
+	DWORD ID, BYTE Direction, short X, short Y)
 {
 	int size = sizeof(ID) + sizeof(Direction) + sizeof(X) + sizeof(Y);
 	stPACKET_HEADER header;
@@ -196,7 +196,7 @@ int SetSCPacket_ATTACK1(SerializePacket* pPacket,
 }
 
 int SetSCPacket_ATTACK2(SerializePacket* pPacket,
-	int ID, BYTE Direction, short X, short Y)
+	DWORD ID, BYTE Direction, short X, short Y)
 {
 	int size = sizeof(ID) + sizeof(Direction) + sizeof(X) + sizeof(Y);
 	stPACKET_HEADER header;
@@ -227,7 +227,7 @@ int SetSCPacket_ATTACK2(SerializePacket* pPacket,
 
 
 int SetSCPacket_ATTACK3(SerializePacket* pPacket,
-	int ID, BYTE Direction, short X, short Y)
+	DWORD ID, BYTE Direction, short X, short Y)
 {
 	int size = sizeof(ID) + sizeof(Direction) + sizeof(X) + sizeof(Y);
 	stPACKET_HEADER header;
@@ -259,7 +259,7 @@ int SetSCPacket_ATTACK3(SerializePacket* pPacket,
 
 
 int SetSCPacket_DAMAGE(SerializePacket* pPacket,
-	int AttackID, int DamageID, BYTE DamageHP)
+	DWORD AttackID, DWORD DamageID, char DamageHP)
 {
 	int size = sizeof(AttackID) + sizeof(DamageID) + sizeof(DamageHP);
 	stPACKET_HEADER header;
@@ -289,7 +289,7 @@ int SetSCPacket_DAMAGE(SerializePacket* pPacket,
 
 
 int SetSCPacket_SYNC(SerializePacket* pPacket,
-	int ID, short X, short Y)
+	DWORD ID, short X, short Y)
 {
 	int size = sizeof(ID) + sizeof(X) + sizeof(Y);
 	stPACKET_HEADER header;

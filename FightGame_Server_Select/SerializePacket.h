@@ -253,6 +253,18 @@ public:
 		return *this;
 	}
 
+	inline SerializePacket& operator << (DWORD iValue)
+	{
+		if (_bufferSize - _writePos < sizeof(iValue))
+			Resize((int)(_bufferSize * 1.5f));
+
+		memcpy_s(&_buffer[_writePos],
+			_bufferSize - _writePos,
+			&iValue, sizeof(iValue));
+
+		_writePos += sizeof(iValue);
+		return *this;
+	}
 
 	inline SerializePacket& operator >> (char& chValue)
 	{

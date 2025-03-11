@@ -41,14 +41,15 @@ private:
 	  dfVERT_SECTOR_NUM, dfDIAG_SECTOR_NUM };
 
 public:
-	void UpdateSector(Player* pPlayer, short Direction);
+	void UpdateSector(Player* pPlayer);
 	inline void SetPlayerSector(Player* pPlayer);
 	inline void SetSectorsAroundInfo();
 	inline void SendPacketOneSector(char* msg, int size, Sector* sector, Session* pExpSession = nullptr);
 	void SendPacketAroundSector(char* msg, int size, Sector* centerSector, Session* pExpSession = nullptr);
+	bool FixedUpdate();
 
 // Player ฐüทร
-	int _playerID = 0;
+	DWORD _playerID = 0;
 	Player* _Players[dfSESSION_MAX]; // Use Session ID for Index
 public:
 	void CreatePlayer(Session* newSession);

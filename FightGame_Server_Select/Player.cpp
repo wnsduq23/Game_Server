@@ -3,7 +3,7 @@
 #include "Protocol.h"
 #include "IngameManager.h"
 
- Player::Player(Session* pSession, int ID)
+ Player::Player(Session* pSession, DWORD ID)
 	: _pSession(pSession), _pSector(nullptr), _ID(ID),
 	_headDirection(dfMOVE_DIR_RR),
 	_moveDirection(dfMOVE_DIR_LL),
@@ -32,9 +32,6 @@ void Player::MoveUpdate()
 	case dfMOVE_DIR_LL:
 		if (CheckMovable(_x - dfSPEED_PLAYER_X, _y))
 			_x -= dfSPEED_PLAYER_X;
-
-		if (_x < _pSector->_xPosMin)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_LL);
 		break;
 
 	case dfMOVE_DIR_LU:
@@ -43,23 +40,11 @@ void Player::MoveUpdate()
 			_x -= dfSPEED_PLAYER_X;
 			_y -= dfSPEED_PLAYER_Y;
 		}
-
-		if (_x < _pSector->_xPosMin &&
-			_y < _pSector->_yPosMin)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_LU);
-
-		else if (_x < _pSector->_xPosMin)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_LL);
-
-		else if (_y < _pSector->_yPosMin)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_UU);
 		break;
 
 	case dfMOVE_DIR_UU:
 		if (CheckMovable(_x, _y - dfSPEED_PLAYER_Y))
 			_y -= dfSPEED_PLAYER_Y;
-		if (_y < _pSector->_yPosMin)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_UU);
 		break;
 
 	case dfMOVE_DIR_RU:
@@ -68,24 +53,11 @@ void Player::MoveUpdate()
 			_x += dfSPEED_PLAYER_X;
 			_y -= dfSPEED_PLAYER_Y;
 		}
-
-		if (_x > _pSector->_xPosMax &&
-			_y < _pSector->_yPosMin)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_RU);
-
-		else if (_x > _pSector->_xPosMax)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_RR);
-
-		else if (_y < _pSector->_yPosMin)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_UU);
 		break;
 
 	case dfMOVE_DIR_RR:
 		if (CheckMovable(_x + dfSPEED_PLAYER_X, _y))
 			_x += dfSPEED_PLAYER_X;
-
-		if (_x > _pSector->_xPosMax)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_RR);
 		break;
 
 	case dfMOVE_DIR_RD:
@@ -94,24 +66,11 @@ void Player::MoveUpdate()
 			_x += dfSPEED_PLAYER_X;
 			_y += dfSPEED_PLAYER_Y;
 		}
-
-		if (_x > _pSector->_xPosMax &&
-			_y > _pSector->_yPosMax)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_RD);
-
-		else if (_x > _pSector->_xPosMax)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_RR);
-
-		else if (_y > _pSector->_yPosMax)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_DD);
 		break;
 
 	case dfMOVE_DIR_DD:
 		if (CheckMovable(_x, _y + dfSPEED_PLAYER_Y))
 			_y += dfSPEED_PLAYER_Y;
-
-		if (_y > _pSector->_yPosMax)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_DD);
 		break;
 
 	case dfMOVE_DIR_LD:
@@ -120,18 +79,9 @@ void Player::MoveUpdate()
 			_x -= dfSPEED_PLAYER_X;
 			_y += dfSPEED_PLAYER_Y;
 		}
-
-		if (_x < _pSector->_xPosMin &&
-			_y > _pSector->_yPosMax)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_LD);
-
-		else if (_x < _pSector->_xPosMin)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_LL);
-
-		else if (_y > _pSector->_yPosMax)
-			IngameManager::GetInstance().UpdateSector(this, dfMOVE_DIR_DD);
 		break;
 	}
+	IngameManager::GetInstance().UpdateSector(this);
 }
 
 void Player::SetPlayerMoveStart(BYTE& moveDirection, short& x, short& y)

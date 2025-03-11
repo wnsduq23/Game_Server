@@ -19,6 +19,7 @@ int main(void)
 		//network
 		networkManager.NetworkUpdate();
 
+
 		//Game logic
 		ingameManager.GameContentsModule();
 	}
