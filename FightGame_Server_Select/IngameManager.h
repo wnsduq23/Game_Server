@@ -28,7 +28,6 @@ public:
 	/*========================
 	*		FUNCTION
 	========================*/
-	inline bool SkipForFixedFrame(void);
 	void GameContentsModule();
 
 // Sector 관련
@@ -46,7 +45,7 @@ public:
 	inline void SetSectorsAroundInfo();
 	inline void SendPacketOneSector(char* msg, int size, Sector* sector, Session* pExpSession = nullptr);
 	void SendPacketAroundSector(char* msg, int size, Sector* centerSector, Session* pExpSession = nullptr);
-	bool FixedUpdate();
+	inline bool FixedUpdate();
 
 // Player 관련
 	DWORD _playerID = 0;

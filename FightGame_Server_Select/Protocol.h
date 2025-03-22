@@ -9,7 +9,7 @@
 #define dfNETWORK_PORT					5000
 #define dfMONITOR_CHECKPOINT			11
 
-#define dfSESSION_MAX					9000
+#define dfSESSION_MAX					7400
 #define dfDEFAULT_PLAYERS_PER_SECTOR	1024
 
 

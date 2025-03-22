@@ -4,10 +4,12 @@
 #include "Player.h"
 #include "Protocol.h"
 #include "ObjectPool.h"
-#include <queue>
+#include <stack>
+#include <unordered_map>
 
 #include "SystemLog.h"
 
+using namespace std;
 
 /*========================
 *		FUNCTION
@@ -25,7 +27,6 @@ class NetworkManager
 private:
 	NetworkManager();
 	~NetworkManager();
-	std::list<Session*>		_sessionList;
 	SOCKET					_listensock = INVALID_SOCKET;
 	FD_SET					_rset;
 	FD_SET					_wset;
@@ -40,6 +41,8 @@ private:
 	Session* _Sessions[dfSESSION_MAX] = { nullptr };  // Use Session ID for Index
 	Session* _rSessions[dfSESSION_MAX];
 	Session* _wSessions[dfSESSION_MAX];
+	stack <Session*> _usableSession;
+	
 
 public:
 	/*========================
@@ -67,8 +70,6 @@ private:
 	inline void AcceptProc();
 	inline void RecvProc(Session* session);
 	inline void SendProc(Session* session);
-    inline void ReleaseSession(Session* session);
-    inline Session* AllocSession();
 
 // session ฐüทร
 	DWORD _sessionIDs = 0;
@@ -78,9 +79,4 @@ private:
 public:
 	int _disconnectCnt = 0;
 	DWORD _disconnectSessionIDs[dfSESSION_MAX];
-
-
-
-	int _acceptCnt = 0;
 };
-

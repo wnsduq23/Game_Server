@@ -5,7 +5,7 @@
 #include "SystemLog.h"
 #include "main.h"
 
-#define __OBJECT_POOL_DEBUG__
+//#define __OBJECT_POOL_DEBUG__
 
 /* ===============================================
 

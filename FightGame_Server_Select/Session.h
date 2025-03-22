@@ -22,6 +22,7 @@ public:
 		_recvRingBuf.ClearBuffer();
 		_sendRingBuf.ClearBuffer();
 	}
+
 public:
 	DWORD		_ID;
 	bool		_bAlive;

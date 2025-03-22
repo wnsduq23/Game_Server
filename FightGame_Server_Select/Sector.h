@@ -11,6 +11,7 @@ class Sector
 public:
 	Sector()
 	{
+		Sector* _around[dfAROUND_SECTOR_NUM] = { 0 };
 
 	}
 	~Sector()

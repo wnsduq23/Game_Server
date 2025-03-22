@@ -31,89 +31,17 @@ IngameManager::~IngameManager()
 	delete _pPlayerPool;
 }
 
-/*bool IngameManager::SkipForFixedFrame(void)
-{
-	static DWORD oldTick = GetTickCount64();
-	//너무 시간이 많이 안 지났으면 skip
-	if ((GetTickCount64() - oldTick) < (1000 / dfFPS))
-		return true;
-	//다음 프레임 시점 계산
-	oldTick += (1000 / dfFPS);
-	return false;
-}*/
-
-/*bool UpdateSkip()
-{
-	// Update() 호출 타이밍 확인용
-	static DWORD oldTime = timeGetTime();
-	DWORD       curTime = timeGetTime();
-
-	// 복구 해야할 프레임
-	static DWORD recoveryFrame = 0;
-
-	// FPS 출력 용도
-	static DWORD frameCheckOldTime = timeGetTime();
-
-	// 기존 프레임
-	static DWORD updateFPS = 0;
-	// 복구한 프레임
-	static DWORD recoveryUpdateFPS = 0;
-
-	// 1초마다 FPS 출력
-	if (curTime - frameCheckOldTime >= 1000)
-		//완존
-	{
-
-		printf("[FPS] total:%lu (normal:%lu, recovery:%lu)\n",
-			updateFPS + recoveryUpdateFPS, updateFPS, recoveryUpdateFPS);
-		// updateFPS가 목표 Frame보다 낮다면 복구 해야할 프레임이 있다는 의미
-		if (updateFPS < dfFPS)
-		{
-			// 복구 해야할 프레임에 추가
-			recoveryFrame += (dfFPS - updateFPS);
-		}
-
-
-		// 프레임은 기존 프레임 + 복구한 프레임이다.
-		frameCheckOldTime = curTime;
-		// 1초 지났으므로 FPS 초기화
-		updateFPS = 0;
-		recoveryUpdateFPS = 0;
-	}
-
-	// TARGET_MS 넘을때 마다 한번씩 Update 호출 
-	if (curTime - oldTime >= 40)
-	{
-		oldTime = curTime;
-		updateFPS++;
-		return true;
-	}
-
-	// 복구 해야할 프레임이 있다면 바로 Update 호출
-	if (recoveryFrame > 0)
-	{
-		// 복구해야할 프레임 1 감소
-		recoveryFrame--;
-		// 복구한 프레임 1 증가
-		recoveryUpdateFPS++;
-		return true;
-	}
-
-	return false;
-
-}*/
-
-// [1] 고정된 Update 간격(초 단위) 예: 0.04f → 25FPS
-static const float FIXED_STEP = 0.04f; 
+// [1] 고정된 Update 간격(초 단위) 40ms == 0.04초 = 25fps
+static const DWORD FIXED_STEP = 40; 
 
 bool IngameManager::FixedUpdate()
 {
     // static 변수를 사용하여 함수 호출 간 누적 정보 보관
     static DWORD oldTime = timeGetTime();    // ms 단위
-    static float accumulated = 0.0f;         // 누적 시간(초 단위)
+    static DWORD accumulated = 0;         // 누적 시간(초 단위)
 
     DWORD curTime = timeGetTime();
-    float deltaTime = (curTime - oldTime) * 0.001f; // ms → 초
+    DWORD deltaTime = curTime - oldTime; // ms → 초
     oldTime = curTime;
 
     // 누적 시간에 이번 프레임 소요 시간 추가
@@ -124,13 +52,10 @@ bool IngameManager::FixedUpdate()
     // accumulated가 FIXED_STEP을 넘을 때마다 여러 번 Update 실행
     while (accumulated >= FIXED_STEP)
     {
-        // 여기서 PlayerActionProc() 등 실제 콘텐츠 로직 처리
-        // 만약 이동/물리 로직이 deltaTime에 의존한다면, 
-        // Update(FIXED_STEP)를 호출하여 '정확히 0.04초'분의 로직을 진행.
-        
-        PlayerActionProc();  // 예: 인자로 FIXED_STEP을 넘겨도 됨
+		// 플레이어 이동 처리
+        PlayerActionProc();
+		// 더 확장성을 고려한다면 여기에 몬스터, 이벤트 등등이 들어올 듯
 
-		//printf("%f\n", accumulated);
         accumulated -= FIXED_STEP;
         didUpdate = true;
     }
@@ -139,19 +64,12 @@ bool IngameManager::FixedUpdate()
 }
 void IngameManager::GameContentsModule()
 {
+	PRO_BEGIN(L"Content");
 	// 프레임 설정 
-	//if (SkipForFixedFrame()) return;
-	//if (!UpdateSkip()) return;
 	if (!FixedUpdate())
     {
-        // 이번 프레임에는 Update가 1번도 안 돌았으므로 로직을 생략
         return;
     }
-
-	// 더 확장성을 고려한다면 여기에 몬스터, 이벤트 등등이 들어올 듯
-	// 플레이어 이동 및 공격 처리
-	PRO_BEGIN(L"Content");
-	//PlayerActionProc();
 	PRO_END(L"Content");
 }
 
@@ -160,7 +78,6 @@ void IngameManager::GameContentsModule()
 ===================================================================*/
 
 // 섹터 구역 나누기 : 플레이어 좌표 / 한 섹터 사이즈 = 플레이어 섹터 인덱스
-// +2 한 이유 : 
 void IngameManager::SetPlayerSector(Player* pPlayer)
 {
 	int x = (pPlayer->GetX() / dfSECTOR_SIZE_X) + 2;
@@ -602,7 +519,7 @@ void IngameManager::PlayerActionProc()
 	{
 		if (_Players[i] == nullptr) continue;
 
-		if (GetTickCount64() -_Players[i]->GetSession()->_lastRecvTime
+		if (timeGetTime() -_Players[i]->GetSession()->_lastRecvTime
 				> dfNETWORK_PACKET_RECV_TIMEOUT)
 		{ 
 			_Players[i]->GetSession()->SetSessionDead();
@@ -635,6 +552,7 @@ void IngameManager::CreatePlayer(Session* pSession)
 		createMeToOtherRet, pPlayer->GetSector(), pPlayer->GetSession());
 
 	// Send <Create All Players Message> to New Player
+	// 자기가 속한 섹터를 제외한 8방향 
 	for (int i = 0; i < dfMOVE_DIR_MAX; i++)
 	{
 		vector<Player*>::iterator iter 
@@ -656,6 +574,7 @@ void IngameManager::CreatePlayer(Session* pSession)
 		}
 	}
 
+	// 자기 자신이 위치한 섹터
 	vector<Player*>::iterator iter
 		= pPlayer->GetSector()->_around[dfMOVE_DIR_INPLACE]->_players.begin();
 	for (; iter < pPlayer->GetSector()->_around[dfMOVE_DIR_INPLACE]->_players.end(); iter++)

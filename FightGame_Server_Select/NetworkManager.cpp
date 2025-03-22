@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include "SetSCPacket.h"
 
-int b;
 NetworkManager::NetworkManager()
 {
 	_pSessionPool = new ObjectPool<Session>(dfSESSION_MAX, false);
@@ -45,6 +44,8 @@ NetworkManager::NetworkManager()
 		g_dump.Crash();
 		return;
 	}
+	int flag = 1;
+	setsockopt(_listensock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 
 	// Bind
 	SOCKADDR_IN serveraddr;
@@ -129,56 +130,72 @@ NetworkManager::~NetworkManager()
 }
 
 void NetworkManager::NetworkUpdate()
-{ 
-	PRO_BEGIN(L"Delayed Disconnect");
-	DisconnectDeadSessions();
-	PRO_END(L"Delayed Disconnect");	
+{
+    // 3) select로 처리된 결과 중, 종료될 세션이 있다면 여기서 정리
+    PRO_BEGIN(L"Delayed Disconnect");
+    DisconnectDeadSessions();
+    PRO_END(L"Delayed Disconnect");
 
-	PRO_BEGIN(L"Network");
+    PRO_BEGIN(L"Network");
 
-	int rStopIdx = 0;
-	int wStopIdx = 0;
-	int rStartIdx = 0;
-	int wStartIdx = 0;
+    // 1) 읽기(r) / 쓰기(w) 세션 목록 구성
+    int rCount = 0;
+    int wCount = 0;
 
-	for (int i = 0; i < dfSESSION_MAX; i++)
+    for (int i = 0; i < dfSESSION_MAX; i++)
+    {
+        // 세션이 살아있는 상태인지 확인
+        if (_Sessions[i] == nullptr || !_Sessions[i]->_bAlive)
+            continue;
+
+        // 읽기 대상
+        _rSessions[rCount++] = _Sessions[i];
+
+        // 쓰기 버퍼에 보낼 데이터가 있으면 쓰기 대상
+        if (_Sessions[i]->_sendRingBuf.GetUseSize() > 0)
+            _wSessions[wCount++] = _Sessions[i];
+    }
+
+	if (rCount == 0 && wCount == 0) // 처음 accept만 해야할 때
 	{
-		if (_Sessions[i] == nullptr || !_Sessions[i]->_bAlive) continue;
-
-		_rSessions[rStopIdx++] = _Sessions[i];
-		if (_Sessions[i]->_sendRingBuf.GetUseSize() > 0)
-			_wSessions[wStopIdx++] = _Sessions[i];
+		SelectModel(0, 0, 0, 0);
 	}
+    // 2) FD_SETSIZE에 맞춰 세션들을 잘라가며 SelectModel() 호출
+    //    보통 Windows에서 FD_SETSIZE는 64이며,
+    //    읽기는 (FD_SETSIZE - 1), 쓰기는 FD_SETSIZE 로 잡는 식
+    const int READ_CHUNK  = FD_SETSIZE - 1; 
+    const int WRITE_CHUNK = FD_SETSIZE;
 
-	while ((rStopIdx - rStartIdx) >= (FD_SETSIZE - 1) &&
-		(wStopIdx - wStartIdx) >= FD_SETSIZE)
-	{
-		SelectModel(rStartIdx, (FD_SETSIZE - 1), wStartIdx, FD_SETSIZE);
-		rStartIdx += (FD_SETSIZE - 1);
-		wStartIdx += FD_SETSIZE;
-	}
+    int rPos = 0;
+    int wPos = 0;
 
-	while((rStopIdx - rStartIdx) >= (FD_SETSIZE - 1) && 
-		(wStopIdx - wStartIdx) < FD_SETSIZE)
-	{
-		SelectModel(rStartIdx, (FD_SETSIZE - 1), 0, 0);
-		rStartIdx += (FD_SETSIZE - 1);
-	}
+    while ( (rPos < rCount) || (wPos < wCount) )
+    {
+        // 이번에 처리할 읽기 세션 개수
+        int rSize = (rPos < rCount)
+                   ? min(READ_CHUNK, (rCount - rPos))
+                   : 0;
 
-	while ((rStopIdx - rStartIdx) < (FD_SETSIZE - 1) &&
-		(wStopIdx - wStartIdx) >= FD_SETSIZE)
-	{
-		SelectModel(0, 0, wStartIdx, FD_SETSIZE);
-		wStartIdx += FD_SETSIZE;
-	}
+        // 이번에 처리할 쓰기 세션 개수
+        int wSize = (wPos < wCount)
+                   ? min(WRITE_CHUNK, (wCount - wPos))
+                   : 0;
 
-	SelectModel(rStartIdx, rStopIdx - rStartIdx, wStartIdx, wStopIdx - wStartIdx);
+        // 처리할 세션이 하나도 없으면 break
+        if (rSize == 0 && wSize == 0)
+            break;
 
-	PRO_END(L"Network");
+        // 부분적으로 select 호출
+        // - _rSessions[rPos] ~ _rSessions[rPos + rSize - 1]
+        // - _wSessions[wPos] ~ _wSessions[wPos + wSize - 1]
+        SelectModel(rPos, rSize, wPos, wSize);
 
-	PRO_BEGIN(L"Delayed Disconnect");
-	DisconnectDeadSessions();
-	PRO_END(L"Delayed Disconnect");	
+        // 처리한 세션만큼 인덱스 이동
+        rPos += rSize;
+        wPos += wSize;
+    }
+
+    PRO_END(L"Network");
 
 }
 
@@ -211,11 +228,12 @@ void NetworkManager::SelectModel(int rStartIdx, int rCount, int wStartIdx, int w
 	}
 	else if (selectRet > 0) // Handle Selected Socket
 	{
+		//printf("rCount : %d / wCount : %d\n", rCount, wCount);
 		if (FD_ISSET(_listensock, &_rset))
 			AcceptProc();
 
 		for (int i = 0; i < rCount; i++)
-			if (FD_ISSET(_rSessions[rStartIdx + i]->_socket, &_rset) && _rSessions[rStartIdx + i]->_bAlive)
+			if (FD_ISSET(_rSessions[rStartIdx + i]->_socket, &_rset))
 				RecvProc(_rSessions[rStartIdx + i]);
 
 		for (int i = 0; i < wCount; i++)
@@ -228,6 +246,10 @@ void NetworkManager::SelectModel(int rStartIdx, int rCount, int wStartIdx, int w
 void NetworkManager::SendProc(Session* session)
 {
 	PRO_BEGIN(L"Network: Send");
+
+	if (session->_sendRingBuf.GetUseSize() <= 25)
+		return;
+
 	int sendRet = 0;
 	int directDeqSize;
 	int moveRet;
@@ -320,15 +342,11 @@ void NetworkManager::SendProc(Session* session)
 		g_dump.Crash();
 		return;
 	}
-	// 이거 넣으니까 오류 안 생김 ㄷㄷ
-	// 왜그럴까? 한 번에 너무많은 패킷을 보내서 그런 것 같은데?
-	//if (session->_sendRingBuf.GetUseSize())
-	printf("\n");
 }
 
 void NetworkManager::AcceptProc()
 {
-	static DWORD oldTick = GetTickCount64();
+	static DWORD oldTick = timeGetTime();
 	PRO_BEGIN(L"Network : Accept");
 	if (_usableCnt == 0 && _sessionIDs == dfSESSION_MAX)
 	{
@@ -362,7 +380,7 @@ void NetworkManager::AcceptProc()
 
 	pSession->_socket = accept(_listensock, (SOCKADDR*)&pSession->_addr, &_addrlen);
 	/*b++;
-	if (GetTickCount64() - oldTick > 1000)
+	if (timeGetTime() - oldTick > 1000)
 	{
 		::wprintf(L"%s[%d]: accept : %d\n", _T(__FUNCTION__), __LINE__, b);
 		b = 0;
@@ -392,7 +410,7 @@ void NetworkManager::AcceptProc()
 	optval.l_linger = 0;
 	int optRet = setsockopt(pSession->_socket, SOL_SOCKET, SO_LINGER,
 		(char*)&optval, sizeof(optval));
-	pSession->_lastRecvTime = GetTickCount64();
+	pSession->_lastRecvTime = timeGetTime();
 	_Sessions[pSession->_ID] = pSession;
 	PRO_BEGIN(L"Ingame : CreatePlayer");
 	IngameManager::GetInstance().CreatePlayer(pSession);
@@ -406,15 +424,7 @@ void NetworkManager::AcceptProc()
 */
 void NetworkManager::RecvProc(Session* session)
 {
-	/* {
-		LOG(L"FightGame", SystemLog::DEBUG_LEVEL,
-			L"%s[%d]: Session %d recv time diff: %d\n",
-			_T(__FUNCTION__), __LINE__, session->_ID, GetTickCount64() - session->_lastRecvTime);
-
-		::wprintf(L"%s[%d]: Session %d recv time diff: %d\n",
-			_T(__FUNCTION__), __LINE__, session->_ID, GetTickCount64() - session->_lastRecvTime);
-	}*/
-	session->_lastRecvTime = GetTickCount64();
+	session->_lastRecvTime = timeGetTime();
 	PRO_BEGIN(L"Network: Recv");
 	int recvRet = 0;
 	
@@ -436,6 +446,12 @@ void NetworkManager::RecvProc(Session* session)
 		}
 		else
 		{
+			LOG(L"FightGame", SystemLog::DEBUG_LEVEL,
+				L"%s[%d]: Session %d Request recv Resize, %d\n",
+				_T(__FUNCTION__), __LINE__,session->_ID);
+
+			::wprintf(L"%s[%d]: Session %d Request recv Resize, %d\n",
+				_T(__FUNCTION__), __LINE__, session->_ID);
 			session->_recvRingBuf.Resize(session->_recvRingBuf.GetBufferSize() * 1.5f);
 			// 업데이트된 DirectEnqueueSize()를 캐싱
 			directEnqueue = session->_recvRingBuf.DirectEnqueueSize();
@@ -585,7 +601,7 @@ void NetworkManager::DisconnectDeadSessions()
 {
 	for (int i = 0; i < _disconnectCnt; i++)
 	{
-		__int64 ID = _disconnectSessionIDs[i];
+		DWORD ID = _disconnectSessionIDs[i];
 
 		Player* pPlayer =IngameManager::GetInstance()._Players[ID];
 		if (pPlayer == nullptr)
@@ -631,8 +647,6 @@ void NetworkManager::DisconnectDeadSessions()
 			g_dump.Crash();
 			return;
 		}
-        // 세션 해제: ReleaseSession() 호출
-        //ReleaseSession(pSession);
 
 		_Sessions[ID] = nullptr;
 
@@ -724,7 +738,7 @@ bool NetworkManager::HandleCSPacket_MoveStart(Player* pPlayer)
 		X = pPlayer->GetX();
 		Y = pPlayer->GetY();
 		PRO_SAVE(L"output.txt");
-		//g_dump.Crash();
+		g_dump.Crash();
 	}
 
 	pPlayer->SetPlayerMoveStart(moveDirection, X, Y);
@@ -781,7 +795,7 @@ bool NetworkManager::HandleCSPacket_MoveStop(Player* pPlayer)
 		X = pPlayer->GetX();
 		Y = pPlayer->GetY();
 		PRO_SAVE(L"output.txt");
-		//g_dump.Crash();
+		g_dump.Crash();
 	}
 
 	pPlayer->SetPlayerMoveStop(headDirection, X, Y);
@@ -839,7 +853,7 @@ bool NetworkManager::HandleCSPacket_Attack1(Player* pPlayer)
 		X = pPlayer->GetX();
 		Y = pPlayer->GetY();
 		PRO_SAVE(L"output.txt");
-		//g_dump.Crash();
+		g_dump.Crash();
 	}
 
 	Player* damagedPlayer = nullptr;
@@ -904,7 +918,7 @@ bool NetworkManager::HandleCSPacket_Attack2(Player* pPlayer)
 		Y = pPlayer->GetY();
 
 		PRO_SAVE(L"output.txt");
-		//g_dump.Crash();
+		g_dump.Crash();
 	}
 
 	Player* damagedPlayer = nullptr;
@@ -970,7 +984,7 @@ bool NetworkManager::HandleCSPacket_Attack3(Player* pPlayer)
 		X = pPlayer->GetX();
 		Y = pPlayer->GetY();
 		PRO_SAVE(L"output.txt");
-		//g_dump.Crash();
+		g_dump.Crash();
 	}
 
 	Player* damagedPlayer = nullptr;

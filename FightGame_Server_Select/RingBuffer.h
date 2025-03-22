@@ -4,8 +4,8 @@
 #include "SystemLog.h"
 #include <tchar.h>
 
-#define DEFAULT_BUF_SIZE 10000
-#define MAX_BUF_SIZE 20000
+#define DEFAULT_BUF_SIZE 2048 + 1
+#define MAX_BUF_SIZE 4096 + 1
 
 /*====================================================================
 
@@ -228,7 +228,7 @@ public:
     }
 
     inline int DirectDequeueSize(void)
-{
+	{
         if (_writePos >= _readPos)
             return _writePos - _readPos;
         else
